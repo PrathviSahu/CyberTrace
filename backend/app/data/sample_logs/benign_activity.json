@@ -1,0 +1,110 @@
+[
+  {
+    "event_id": "evt_ben_001",
+    "timestamp": "2026-11-01T02:00:00Z",
+    "category": "authentication",
+    "action": "logon_success",
+    "severity": "informational",
+    "user_identity": "backup_agent",
+    "source_ip": "192.168.1.200",
+    "source_port": 50110,
+    "destination_ip": "192.168.1.250",
+    "destination_port": 22,
+    "hostname": "SRV-BACKUP",
+    "process_name": "sshd",
+    "source_format": "linux_auth_log",
+    "raw_payload": {
+      "msg": "Accepted publickey for backup_agent"
+    }
+  },
+  {
+    "event_id": "evt_ben_002",
+    "timestamp": "2026-11-01T02:00:15Z",
+    "category": "process_execution",
+    "action": "process_start",
+    "severity": "informational",
+    "user_identity": "backup_agent",
+    "hostname": "SRV-BACKUP",
+    "process_name": "rsync",
+    "process_command_line": "/usr/bin/rsync -a /data /mnt/backup",
+    "source_format": "linux_auth_log",
+    "raw_payload": {
+      "msg": "Process started /usr/bin/rsync"
+    }
+  },
+  {
+    "event_id": "evt_ben_003",
+    "timestamp": "2026-11-01T08:30:10Z",
+    "category": "authentication",
+    "action": "logon_success",
+    "severity": "informational",
+    "user_identity": "alice",
+    "source_ip": "192.168.2.14",
+    "source_port": 51042,
+    "destination_ip": "192.168.1.10",
+    "destination_port": 443,
+    "hostname": "WKSTN-ALICE",
+    "source_format": "windows_event_log",
+    "raw_payload": {
+      "EventID": 4624,
+      "TargetUserName": "alice"
+    }
+  },
+  {
+    "event_id": "evt_ben_004",
+    "timestamp": "2026-11-01T08:35:00Z",
+    "category": "authentication",
+    "action": "logon_failure",
+    "severity": "informational",
+    "user_identity": "bob",
+    "source_ip": "192.168.2.18",
+    "source_port": 51100,
+    "destination_ip": "192.168.1.10",
+    "destination_port": 443,
+    "hostname": "WKSTN-BOB",
+    "source_format": "windows_event_log",
+    "raw_payload": {
+      "EventID": 4625,
+      "TargetUserName": "bob"
+    }
+  },
+  {
+    "event_id": "evt_ben_005",
+    "timestamp": "2026-11-01T08:35:12Z",
+    "category": "authentication",
+    "action": "logon_success",
+    "severity": "informational",
+    "user_identity": "bob",
+    "source_ip": "192.168.2.18",
+    "source_port": 51102,
+    "destination_ip": "192.168.1.10",
+    "destination_port": 443,
+    "hostname": "WKSTN-BOB",
+    "source_format": "windows_event_log",
+    "raw_payload": {
+      "EventID": 4624,
+      "TargetUserName": "bob"
+    }
+  },
+  {
+    "event_id": "evt_ben_006",
+    "timestamp": "2026-11-01T08:40:00Z",
+    "category": "network_connection",
+    "action": "network_connect",
+    "severity": "informational",
+    "user_identity": "alice",
+    "source_ip": "192.168.2.14",
+    "source_port": 52140,
+    "destination_ip": "142.250.190.46",
+    "destination_port": 443,
+    "hostname": "WKSTN-ALICE",
+    "protocol": "TCP",
+    "bytes_sent": 45000,
+    "bytes_received": 520000,
+    "source_format": "zeek_conn_log",
+    "raw_payload": {
+      "orig_bytes": 45000,
+      "resp_bytes": 520000
+    }
+  }
+]

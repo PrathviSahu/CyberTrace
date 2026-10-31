@@ -1,0 +1,166 @@
+[
+  {
+    "event_id": "evt_atk_001",
+    "timestamp": "2026-11-01T08:01:05Z",
+    "category": "authentication",
+    "action": "logon_failure",
+    "severity": "medium",
+    "user_identity": "svc_deploy",
+    "source_ip": "198.51.100.44",
+    "source_port": 41201,
+    "destination_ip": "192.168.1.105",
+    "destination_port": 22,
+    "hostname": "SRV-APP-01",
+    "process_name": "sshd",
+    "source_format": "linux_auth_log",
+    "raw_payload": {
+      "msg": "Failed password for svc_deploy from 198.51.100.44 port 41201 ssh2"
+    }
+  },
+  {
+    "event_id": "evt_atk_002",
+    "timestamp": "2026-11-01T08:01:32Z",
+    "category": "authentication",
+    "action": "logon_failure",
+    "severity": "medium",
+    "user_identity": "svc_deploy",
+    "source_ip": "198.51.100.44",
+    "source_port": 41204,
+    "destination_ip": "192.168.1.105",
+    "destination_port": 22,
+    "hostname": "SRV-APP-01",
+    "process_name": "sshd",
+    "source_format": "linux_auth_log",
+    "raw_payload": {
+      "msg": "Failed password for svc_deploy from 198.51.100.44 port 41204 ssh2"
+    }
+  },
+  {
+    "event_id": "evt_atk_003",
+    "timestamp": "2026-11-01T08:01:58Z",
+    "category": "authentication",
+    "action": "logon_failure",
+    "severity": "medium",
+    "user_identity": "svc_deploy",
+    "source_ip": "198.51.100.44",
+    "source_port": 41209,
+    "destination_ip": "192.168.1.105",
+    "destination_port": 22,
+    "hostname": "SRV-APP-01",
+    "process_name": "sshd",
+    "source_format": "linux_auth_log",
+    "raw_payload": {
+      "msg": "Failed password for svc_deploy from 198.51.100.44 port 41209 ssh2"
+    }
+  },
+  {
+    "event_id": "evt_atk_004",
+    "timestamp": "2026-11-01T08:02:25Z",
+    "category": "authentication",
+    "action": "logon_failure",
+    "severity": "medium",
+    "user_identity": "svc_deploy",
+    "source_ip": "198.51.100.44",
+    "source_port": 41215,
+    "destination_ip": "192.168.1.105",
+    "destination_port": 22,
+    "hostname": "SRV-APP-01",
+    "process_name": "sshd",
+    "source_format": "linux_auth_log",
+    "raw_payload": {
+      "msg": "Failed password for svc_deploy from 198.51.100.44 port 41215 ssh2"
+    }
+  },
+  {
+    "event_id": "evt_atk_005",
+    "timestamp": "2026-11-01T08:02:51Z",
+    "category": "authentication",
+    "action": "logon_failure",
+    "severity": "medium",
+    "user_identity": "svc_deploy",
+    "source_ip": "198.51.100.44",
+    "source_port": 41220,
+    "destination_ip": "192.168.1.105",
+    "destination_port": 22,
+    "hostname": "SRV-APP-01",
+    "process_name": "sshd",
+    "source_format": "linux_auth_log",
+    "raw_payload": {
+      "msg": "Failed password for svc_deploy from 198.51.100.44 port 41220 ssh2"
+    }
+  },
+  {
+    "event_id": "evt_atk_006",
+    "timestamp": "2026-11-01T08:03:18Z",
+    "category": "authentication",
+    "action": "logon_failure",
+    "severity": "medium",
+    "user_identity": "svc_deploy",
+    "source_ip": "198.51.100.44",
+    "source_port": 41225,
+    "destination_ip": "192.168.1.105",
+    "destination_port": 22,
+    "hostname": "SRV-APP-01",
+    "process_name": "sshd",
+    "source_format": "linux_auth_log",
+    "raw_payload": {
+      "msg": "Failed password for svc_deploy from 198.51.100.44 port 41225 ssh2"
+    }
+  },
+  {
+    "event_id": "evt_atk_007",
+    "timestamp": "2026-11-01T08:05:40Z",
+    "category": "authentication",
+    "action": "logon_success",
+    "severity": "low",
+    "user_identity": "svc_deploy",
+    "source_ip": "198.51.100.44",
+    "source_port": 41230,
+    "destination_ip": "192.168.1.105",
+    "destination_port": 22,
+    "hostname": "SRV-APP-01",
+    "process_name": "sshd",
+    "source_format": "linux_auth_log",
+    "raw_payload": {
+      "msg": "Accepted password for svc_deploy from 198.51.100.44 port 41230 ssh2"
+    }
+  },
+  {
+    "event_id": "evt_atk_008",
+    "timestamp": "2026-11-01T08:08:12Z",
+    "category": "privilege_change",
+    "action": "elevation_success",
+    "severity": "high",
+    "user_identity": "svc_deploy",
+    "source_ip": "192.168.1.105",
+    "hostname": "SRV-APP-01",
+    "process_name": "sudo",
+    "process_command_line": "sudo /bin/bash",
+    "source_format": "linux_auth_log",
+    "raw_payload": {
+      "msg": "svc_deploy : TTY=pts/2 ; PWD=/home/svc_deploy ; USER=root ; COMMAND=/bin/bash"
+    }
+  },
+  {
+    "event_id": "evt_atk_009",
+    "timestamp": "2026-11-01T08:12:05Z",
+    "category": "network_connection",
+    "action": "network_connect",
+    "severity": "high",
+    "user_identity": "root",
+    "source_ip": "192.168.1.105",
+    "source_port": 49152,
+    "destination_ip": "203.0.113.88",
+    "destination_port": 443,
+    "hostname": "SRV-APP-01",
+    "protocol": "TCP",
+    "bytes_sent": 65011712,
+    "bytes_received": 14200,
+    "source_format": "zeek_conn_log",
+    "raw_payload": {
+      "orig_bytes": 65011712,
+      "resp_bytes": 14200,
+      "proto": "tcp"
+    }
+  }
+]

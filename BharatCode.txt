@@ -1,0 +1,7 @@
+Project: CyberTrace
+Description: AI-Assisted SOC Incident Investigation Platform for Defensive Cybersecurity
+Hackathon: BharatCode Hackathon 2026
+Submission Deadline: 10 November 2026, 11:59 PM IST
+AI Model: qwen-3.8-27b
+Endpoint: https://bharatcode.ai/api/model/v1
+Repository: CyberTrace (Defensive Security Operations Center)

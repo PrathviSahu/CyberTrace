@@ -1,0 +1,53 @@
+{
+  "dataset_name": "CyberTrace Enterprise Benchmark 1.0",
+  "total_events": 15,
+  "attack_events_count": 9,
+  "benign_events_count": 6,
+  "expected_detections": [
+    {
+      "rule_id": "DET-001",
+      "entity_key": "user:svc_deploy",
+      "expected_trigger_events": [
+        "evt_atk_001",
+        "evt_atk_002",
+        "evt_atk_003",
+        "evt_atk_004",
+        "evt_atk_005",
+        "evt_atk_006"
+      ],
+      "phase": "Credential Access (Brute Force)"
+    },
+    {
+      "rule_id": "DET-002",
+      "entity_key": "user:svc_deploy",
+      "expected_trigger_events": [
+        "evt_atk_007"
+      ],
+      "phase": "Initial Access / Compromise"
+    },
+    {
+      "rule_id": "DET-003",
+      "entity_key": "user:svc_deploy",
+      "expected_trigger_events": [
+        "evt_atk_008"
+      ],
+      "phase": "Privilege Escalation (sudo)"
+    },
+    {
+      "rule_id": "DET-004",
+      "entity_key": "ip:203.0.113.88",
+      "expected_trigger_events": [
+        "evt_atk_009"
+      ],
+      "phase": "Exfiltration"
+    }
+  ],
+  "expected_benign_non_detections": [
+    "evt_ben_001",
+    "evt_ben_002",
+    "evt_ben_003",
+    "evt_ben_004",
+    "evt_ben_005",
+    "evt_ben_006"
+  ]
+}

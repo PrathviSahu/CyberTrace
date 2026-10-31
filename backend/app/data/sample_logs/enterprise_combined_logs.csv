@@ -1,0 +1,16 @@
+event_id,timestamp,category,action,severity,user_identity,source_ip,destination_ip,source_port,destination_port,hostname,process_name,process_command_line,bytes_sent,bytes_received,protocol,source_format
+evt_ben_001,2026-11-01T02:00:00Z,authentication,logon_success,informational,backup_agent,192.168.1.200,192.168.1.250,50110,22,SRV-BACKUP,sshd,,,,,linux_auth_log
+evt_ben_002,2026-11-01T02:00:15Z,process_execution,process_start,informational,backup_agent,,,,,SRV-BACKUP,rsync,/usr/bin/rsync -a /data /mnt/backup,,,,linux_auth_log
+evt_atk_001,2026-11-01T08:01:05Z,authentication,logon_failure,medium,svc_deploy,198.51.100.44,192.168.1.105,41201,22,SRV-APP-01,sshd,,,,,linux_auth_log
+evt_atk_002,2026-11-01T08:01:32Z,authentication,logon_failure,medium,svc_deploy,198.51.100.44,192.168.1.105,41204,22,SRV-APP-01,sshd,,,,,linux_auth_log
+evt_atk_003,2026-11-01T08:01:58Z,authentication,logon_failure,medium,svc_deploy,198.51.100.44,192.168.1.105,41209,22,SRV-APP-01,sshd,,,,,linux_auth_log
+evt_atk_004,2026-11-01T08:02:25Z,authentication,logon_failure,medium,svc_deploy,198.51.100.44,192.168.1.105,41215,22,SRV-APP-01,sshd,,,,,linux_auth_log
+evt_atk_005,2026-11-01T08:02:51Z,authentication,logon_failure,medium,svc_deploy,198.51.100.44,192.168.1.105,41220,22,SRV-APP-01,sshd,,,,,linux_auth_log
+evt_atk_006,2026-11-01T08:03:18Z,authentication,logon_failure,medium,svc_deploy,198.51.100.44,192.168.1.105,41225,22,SRV-APP-01,sshd,,,,,linux_auth_log
+evt_atk_007,2026-11-01T08:05:40Z,authentication,logon_success,low,svc_deploy,198.51.100.44,192.168.1.105,41230,22,SRV-APP-01,sshd,,,,,linux_auth_log
+evt_atk_008,2026-11-01T08:08:12Z,privilege_change,elevation_success,high,svc_deploy,192.168.1.105,,,,SRV-APP-01,sudo,sudo /bin/bash,,,,linux_auth_log
+evt_atk_009,2026-11-01T08:12:05Z,network_connection,network_connect,high,root,192.168.1.105,203.0.113.88,49152,443,SRV-APP-01,,,65011712,14200,TCP,zeek_conn_log
+evt_ben_003,2026-11-01T08:30:10Z,authentication,logon_success,informational,alice,192.168.2.14,192.168.1.10,51042,443,WKSTN-ALICE,,,,,,windows_event_log
+evt_ben_004,2026-11-01T08:35:00Z,authentication,logon_failure,informational,bob,192.168.2.18,192.168.1.10,51100,443,WKSTN-BOB,,,,,,windows_event_log
+evt_ben_005,2026-11-01T08:35:12Z,authentication,logon_success,informational,bob,192.168.2.18,192.168.1.10,51102,443,WKSTN-BOB,,,,,,windows_event_log
+evt_ben_006,2026-11-01T08:40:00Z,network_connection,network_connect,informational,alice,192.168.2.14,142.250.190.46,52140,443,WKSTN-ALICE,,,45000,520000,TCP,zeek_conn_log
