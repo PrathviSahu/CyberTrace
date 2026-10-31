@@ -413,53 +413,22 @@ export const api = {
   },
 
   /**
-   * Replay a scenario and calculate empirical confusion matrix
+   * Replay a scenario and calculate empirical confusion matrix via live backend
    */
   async replayThreatLabScenario(scenarioId: string): Promise<ScenarioReplayResult> {
     try {
       const res = await fetch(`${API_BASE}/threatlab/replay/${scenarioId}`, {
         method: "POST",
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(8000),
       });
-      if (res.ok) {
-        return await res.json();
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(errJson.detail || `Server returned HTTP ${res.status}`);
       }
-    } catch (e) {
-      console.warn(`Live replay for ${scenarioId} failed, running client simulation:`, e);
+      return await res.json();
+    } catch (e: any) {
+      console.error(`ThreatLab live replay for ${scenarioId} failed:`, e);
+      throw new Error(e.message || `Failed to execute replay for ${scenarioId}`);
     }
-
-    await new Promise((r) => setTimeout(r, 600));
-    return {
-      scenario_id: scenarioId,
-      scenario_name: "Multi-Stage Credential Stuffing & Exfiltration",
-      events_processed: 9,
-      detections_fired_count: 4,
-      detections: [
-        {
-          rule_id: "DET-001",
-          rule_name: "Repeated Failed Logins Burst",
-          severity: "medium",
-          entity_value: "user:svc_deploy",
-          detected_at: "2026-11-01T08:05:00Z",
-          explanation: "Observed 6 failed login attempts for user:svc_deploy.",
-          triggering_event_ids: ["scn1_evt_001"],
-        },
-      ],
-      confusion_matrix: {
-        true_positives: 4,
-        false_positives: 0,
-        false_negatives: 0,
-        true_negatives: 180,
-        precision: 1.0,
-        recall: 1.0,
-        f1_score: 1.0,
-      },
-      duration_ms: 1.25,
-      status: "success",
-      evaluation_notes: [
-        "Simulated benchmark replay executed.",
-        "Zero false alarms detected.",
-      ],
-    };
   },
 };
