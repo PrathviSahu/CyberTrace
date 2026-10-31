@@ -159,3 +159,43 @@ export interface AssetRecord {
   active_incident_count: number;
   risk_score: number;
 }
+
+export interface ConfusionMatrix {
+  true_positives: number;
+  false_positives: number;
+  false_negatives: number;
+  true_negatives: number;
+  precision: number;
+  recall: number;
+  f1_score: number;
+}
+
+export interface ThreatLabScenario {
+  scenario_id: string;
+  name: string;
+  description: string;
+  event_count: number;
+  expected_detection_count: number;
+  category: string;
+  mitre_techniques: string[];
+}
+
+export interface ScenarioReplayResult {
+  scenario_id: string;
+  scenario_name: string;
+  events_processed: number;
+  detections_fired_count: number;
+  detections: Array<{
+    rule_id: string;
+    rule_name: string;
+    severity: string;
+    entity_value: string;
+    detected_at: string;
+    explanation: string;
+    triggering_event_ids: string[];
+  }>;
+  confusion_matrix: ConfusionMatrix;
+  duration_ms: number;
+  status: string;
+  evaluation_notes: string[];
+}

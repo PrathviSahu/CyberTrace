@@ -66,8 +66,8 @@ export const IncidentWorkspace: React.FC<IncidentWorkspaceProps> = ({ activeMode
       setInvestigation(invs[0]);
     }
 
-    // Build attack graph
-    const { nodes: gNodes, edges: gEdges } = api.buildAttackGraph(
+    // Build or fetch attack graph
+    const { nodes: gNodes, edges: gEdges } = await api.getIncidentGraph(
       detail.incident,
       detail.detections,
       detail.events

@@ -183,3 +183,4 @@ CyberTrace/
 ## 7. License
 
 Licensed under the Apache License, Version 2.0. Built for the BharatCode Hackathon 2026.
+
