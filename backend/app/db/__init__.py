@@ -6,6 +6,7 @@ from .models import (
     IncidentModel,
     IncidentDetectionModel,
     IncidentEntityModel,
+    AIInvestigationModel,
 )
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "engine",
     "async_session_factory",
     "get_async_session",
+    "get_db_session",
     "init_db",
     "drop_db",
     "SecurityEventModel",
@@ -21,4 +23,5 @@ __all__ = [
     "IncidentModel",
     "IncidentDetectionModel",
     "IncidentEntityModel",
+    "AIInvestigationModel",
 ]

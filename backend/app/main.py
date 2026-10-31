@@ -19,6 +19,8 @@ from app.parsers.pipeline import LogIngestionPipeline
 from app.schemas.ces import CommonEvent
 from app.schemas.detection import DetectionResponse
 from app.schemas.incident import IncidentDetailResponse, IncidentSummaryResponse, LogUploadResponse
+from app.schemas.investigation import InvestigationResponse
+from app.investigation.service import InvestigationService
 
 
 @asynccontextmanager
@@ -275,3 +277,70 @@ async def get_incident(
             for ent in dossier["entities"]
         ],
     }
+
+
+@app.post(
+    f"{settings.API_V1_STR}/incidents/{{incident_id}}/investigate",
+    response_model=InvestigationResponse,
+    tags=["Investigations"],
+)
+async def trigger_investigation(
+    incident_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> InvestigationResponse:
+    service = InvestigationService(session)
+    investigation = await service.investigate_incident(incident_id)
+    if not investigation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident '{incident_id}' not found",
+        )
+    return InvestigationResponse.model_validate(investigation)
+
+
+@app.get(
+    f"{settings.API_V1_STR}/incidents/{{incident_id}}/investigations",
+    response_model=List[InvestigationResponse],
+    tags=["Investigations"],
+)
+async def list_investigations(
+    incident_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> List[InvestigationResponse]:
+    repo = IncidentRepository(session)
+    incident = await repo.get_by_id(incident_id)
+    if not incident:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident '{incident_id}' not found",
+        )
+    service = InvestigationService(session)
+    investigations = await service.list_investigations(incident_id)
+    return [InvestigationResponse.model_validate(inv) for inv in investigations]
+
+
+@app.get(
+    f"{settings.API_V1_STR}/incidents/{{incident_id}}/investigations/{{investigation_id}}",
+    response_model=InvestigationResponse,
+    tags=["Investigations"],
+)
+async def get_investigation(
+    incident_id: str,
+    investigation_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> InvestigationResponse:
+    repo = IncidentRepository(session)
+    incident = await repo.get_by_id(incident_id)
+    if not incident:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident '{incident_id}' not found",
+        )
+    service = InvestigationService(session)
+    inv = await service.get_investigation(incident_id, investigation_id)
+    if not inv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Investigation '{investigation_id}' not found for incident '{incident_id}'",
+        )
+    return InvestigationResponse.model_validate(inv)

@@ -1,6 +1,16 @@
 from .ces import CommonEvent, EventCategory, EventAction, EventSeverity, generate_event_id
 from .detection import DetectionResponse
 from .incident import IncidentEntityResponse, IncidentSummaryResponse, IncidentDetailResponse, LogUploadResponse
+from .investigation import (
+    ConfidenceLevel,
+    ImpactLevel,
+    ObservedFact,
+    Hypothesis,
+    UnknownGap,
+    RecommendedAction,
+    StructuredInvestigation,
+    InvestigationResponse,
+)
 
 __all__ = [
     "CommonEvent",
@@ -13,4 +23,12 @@ __all__ = [
     "IncidentSummaryResponse",
     "IncidentDetailResponse",
     "LogUploadResponse",
+    "ConfidenceLevel",
+    "ImpactLevel",
+    "ObservedFact",
+    "Hypothesis",
+    "UnknownGap",
+    "RecommendedAction",
+    "StructuredInvestigation",
+    "InvestigationResponse",
 ]

@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     BHARATCODE_BASE_URL: str = "https://bharatcode.ai/api/model/v1"
     BHARATCODE_MODEL: str = "qwen-3.8-27b"
     BHARATCODE_TIMEOUT_SECONDS: float = 30.0
+    BHARATCODE_MAX_TOOL_ROUNDS: int = 5
+    BHARATCODE_MAX_OUTPUT_TOKENS: int = 2048
+    BHARATCODE_MAX_TOTAL_TOOL_CALLS: int = 10
     
     # Detection Thresholds
     BRUTE_FORCE_FAILURE_THRESHOLD: int = 5

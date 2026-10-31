@@ -145,6 +145,9 @@ class IncidentModel(Base):
     entities: Mapped[List["IncidentEntityModel"]] = sa_relationship(
         "IncidentEntityModel", back_populates="incident", cascade="all, delete-orphan"
     )
+    investigations: Mapped[List["AIInvestigationModel"]] = sa_relationship(
+        "AIInvestigationModel", back_populates="incident", cascade="all, delete-orphan"
+    )
 
 
 class IncidentDetectionModel(Base):
@@ -187,3 +190,33 @@ class IncidentEntityModel(Base):
     __table_args__ = (
         UniqueConstraint("incident_id", "entity_type", "entity_value", name="uq_incident_entity"),
     )
+
+
+class AIInvestigationModel(Base):
+    __tablename__ = "ai_investigations"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    incident_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("incidents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    model_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)  # completed, fallback, failed, in_progress
+    executive_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    structured_result: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    event_citations: Mapped[List[str]] = mapped_column(JSON, default=list, nullable=False)
+    tool_call_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    duration_seconds: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    request_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    incident: Mapped["IncidentModel"] = sa_relationship("IncidentModel", back_populates="investigations")
