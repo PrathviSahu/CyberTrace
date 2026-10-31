@@ -21,6 +21,8 @@ from app.schemas.detection import DetectionResponse
 from app.schemas.incident import IncidentDetailResponse, IncidentSummaryResponse, LogUploadResponse
 from app.schemas.investigation import InvestigationResponse
 from app.investigation.service import InvestigationService
+from app.threatlab.models import ScenarioReplayResponse, ScenarioSummary
+from app.threatlab.service import ThreatLabService
 
 
 @asynccontextmanager
@@ -344,3 +346,110 @@ async def get_investigation(
             detail=f"Investigation '{investigation_id}' not found for incident '{incident_id}'",
         )
     return InvestigationResponse.model_validate(inv)
+
+
+@app.get(f"{settings.API_V1_STR}/incidents/{{incident_id}}/graph", tags=["Incidents", "Graph"])
+async def get_incident_graph(
+    incident_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> Dict[str, Any]:
+    repo = IncidentRepository(session)
+    dossier = await repo.get_incident_evidence(incident_id)
+    if not dossier:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Incident '{incident_id}' not found")
+
+    inc = dossier["incident"]
+    entities = dossier["entities"]
+    detections = dossier["detections"]
+    events = dossier["events"]
+
+    nodes: List[Dict[str, Any]] = []
+    edges: List[Dict[str, Any]] = []
+
+    nodes.append({
+        "id": f"node_inc_{inc.id}",
+        "label": inc.id,
+        "subLabel": inc.title[:35] + ("..." if len(inc.title) > 35 else ""),
+        "type": "incident",
+        "severity": inc.severity,
+    })
+
+    for idx, ent in enumerate(entities):
+        node_id = f"node_ent_{ent.entity_type}_{idx}"
+        node_type = "host"
+        if ent.entity_type in ("user", "service_account"):
+            node_type = "user"
+        elif ent.entity_type in ("source_ip", "destination_ip"):
+            node_type = "ip"
+
+        nodes.append({
+            "id": node_id,
+            "label": ent.entity_value,
+            "subLabel": ent.relationship.replace("_", " ").upper(),
+            "type": node_type,
+            "criticality": "tier_1" if "compromised" in ent.relationship else "tier_2",
+        })
+
+        edges.append({
+            "id": f"edge_inc_ent_{idx}",
+            "source": f"node_inc_{inc.id}",
+            "target": node_id,
+            "label": ent.relationship,
+            "edgeType": "correlated",
+        })
+
+    for d_idx, det in enumerate(detections):
+        det_node_id = f"node_det_{det.id or d_idx}"
+        nodes.append({
+            "id": det_node_id,
+            "label": det.rule_id,
+            "subLabel": det.rule_name,
+            "type": "detection",
+            "severity": det.severity,
+        })
+
+        triggering_event_ids = (
+            det.metadata_json.get("triggering_event_ids", [])
+            if hasattr(det, "metadata_json") and isinstance(det.metadata_json, dict)
+            else (getattr(det, "triggering_event_ids", []) or [])
+        )
+        edges.append({
+            "id": f"edge_det_inc_{d_idx}",
+            "source": det_node_id,
+            "target": f"node_inc_{inc.id}",
+            "label": "DETECTED_STAGE",
+            "edgeType": "observed",
+            "evidenceEventId": triggering_event_ids[0] if triggering_event_ids else None,
+        })
+
+    for e_idx, evt in enumerate(events):
+        if evt.destination_ip and evt.hostname:
+            dest_node = next((n for n in nodes if n["label"] == evt.destination_ip), None)
+            host_node = next((n for n in nodes if n["label"] == evt.hostname), None)
+            if dest_node and host_node:
+                edges.append({
+                    "id": f"edge_evt_flow_{e_idx}",
+                    "source": host_node["id"],
+                    "target": dest_node["id"],
+                    "label": f"Egress {round(evt.bytes_out / 1000000)}MB" if evt.bytes_out else "Network Flow",
+                    "edgeType": "observed",
+                    "evidenceEventId": evt.id,
+                })
+
+    return {"nodes": nodes, "edges": edges, "incident_id": inc.id}
+
+
+@app.get(f"{settings.API_V1_STR}/threatlab/scenarios", response_model=List[ScenarioSummary], tags=["ThreatLab"])
+async def list_threatlab_scenarios() -> List[ScenarioSummary]:
+    service = ThreatLabService()
+    return service.get_scenarios()
+
+
+@app.post(f"{settings.API_V1_STR}/threatlab/replay/{{scenario_id}}", response_model=ScenarioReplayResponse, tags=["ThreatLab"])
+async def replay_threatlab_scenario(scenario_id: str) -> ScenarioReplayResponse:
+    service = ThreatLabService()
+    try:
+        return service.replay_scenario(scenario_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+

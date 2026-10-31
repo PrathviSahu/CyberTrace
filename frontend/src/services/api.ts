@@ -8,6 +8,8 @@ import {
   CommonEvent,
   AttackGraphNode,
   AttackGraphEdge,
+  ThreatLabScenario,
+  ScenarioReplayResult,
 } from "../types";
 import {
   DEMO_OVERVIEW_METRICS,
@@ -329,5 +331,104 @@ export const api = {
     });
 
     return { nodes, edges };
+  },
+
+  /**
+   * Fetch live attack graph nodes and edges for an incident with fallback
+   */
+  async getIncidentGraph(
+    incident: IncidentSummary,
+    detections: Detection[],
+    events: CommonEvent[]
+  ): Promise<{ nodes: AttackGraphNode[]; edges: AttackGraphEdge[] }> {
+    try {
+      const res = await fetch(`${API_BASE}/incidents/${incident.id}/graph`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.nodes && data.edges) {
+          return { nodes: data.nodes, edges: data.edges };
+        }
+      }
+    } catch (e) {
+      console.warn(`Live graph for ${incident.id} unavailable, computing locally:`, e);
+    }
+    return this.buildAttackGraph(incident, detections, events);
+  },
+
+  /**
+   * List ThreatLab benchmark evaluation scenarios
+   */
+  async getThreatLabScenarios(): Promise<ThreatLabScenario[]> {
+    try {
+      const res = await fetch(`${API_BASE}/threatlab/scenarios`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn("Live ThreatLab scenarios query failed, using static catalog:", e);
+    }
+
+    return [
+      {
+        scenario_id: "SCN-001",
+        name: "Multi-Stage Credential Stuffing & Exfiltration",
+        description: "Rapid authentication burst against svc_deploy followed by logon success, sudo elevation, and 150 MB egress.",
+        event_count: 9,
+        expected_detection_count: 4,
+        category: "multi_stage_attack",
+        mitre_techniques: ["T1110.001", "T1078.002", "T1548.003", "T1041"],
+      },
+      {
+        scenario_id: "SCN-002",
+        name: "Targeted Sudo Privilege Escalation",
+        description: "Operator session executes unauthorized token elevation outside maintenance window.",
+        event_count: 3,
+        expected_detection_count: 1,
+        category: "privilege_escalation",
+        mitre_techniques: ["T1548.003"],
+      },
+      {
+        scenario_id: "SCN-003",
+        name: "Shared-Host Multi-User Isolation",
+        description: "Independent user accounts active on a shared server, verifying no hub-node correlation pollution.",
+        event_count: 8,
+        expected_detection_count: 1,
+        category: "correlation_safeguards",
+        mitre_techniques: ["T1110.001"],
+      },
+      {
+        scenario_id: "SCN-004",
+        name: "Benign Administrative Baseline",
+        description: "Routine enterprise administrative traffic, scheduled cron backups, and authorized internal logons.",
+        event_count: 20,
+        expected_detection_count: 0,
+        category: "benign_baseline",
+        mitre_techniques: [],
+      },
+    ];
+  },
+
+  /**
+   * Replay a scenario and calculate empirical confusion matrix via live backend
+   */
+  async replayThreatLabScenario(scenarioId: string): Promise<ScenarioReplayResult> {
+    try {
+      const res = await fetch(`${API_BASE}/threatlab/replay/${scenarioId}`, {
+        method: "POST",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(errJson.detail || `Server returned HTTP ${res.status}`);
+      }
+      return await res.json();
+    } catch (e: any) {
+      console.error(`ThreatLab live replay for ${scenarioId} failed:`, e);
+      throw new Error(e.message || `Failed to execute replay for ${scenarioId}`);
+    }
   },
 };
