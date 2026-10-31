@@ -46,9 +46,9 @@ class LogIngestionPipeline:
 
         # If extension provides explicit hint
         fn_lower = filename.lower()
-        if fn_lower.endswith(".csv") and isinstance(chosen_parser, (GenericJsonParser,)):
+        if fn_lower.endswith(".csv"):
             chosen_parser = GenericCsvParser()
-        elif fn_lower.endswith(".json") and isinstance(chosen_parser, (GenericCsvParser,)):
+        elif fn_lower.endswith(".json") or fn_lower.endswith(".jsonl"):
             chosen_parser = GenericJsonParser()
 
         # Parse events

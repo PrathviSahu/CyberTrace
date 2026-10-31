@@ -25,6 +25,9 @@ class LinuxAuthParser(BaseLogParser):
         return "linux_auth_log"
 
     def can_parse(self, sample_text: str) -> bool:
+        sample_stripped = sample_text.strip()
+        if sample_stripped.startswith("[") or sample_stripped.startswith("{"):
+            return False
         sample_lower = sample_text.lower()
         if "sshd[" in sample_lower or "sudo:" in sample_lower or "failed password" in sample_lower:
             return True
