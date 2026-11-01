@@ -174,3 +174,37 @@ async def test_upload_idempotency_repeated_upload():
         assert res2.status_code == 200
         assert res2.json()["parsed_events_count"] == 9
 
+
+@pytest.mark.asyncio
+async def test_update_incident_status():
+    from pathlib import Path
+    sample_path = Path(__file__).resolve().parent.parent / "app" / "data" / "sample_logs" / "multi_stage_attack.json"
+    with open(sample_path, "rb") as f:
+        attack_bytes = f.read()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Upload attack log to create an incident
+        files = {"file": ("attack.json", attack_bytes, "application/json")}
+        await client.post("/api/v1/logs/upload", files=files)
+
+        inc_res = await client.get("/api/v1/incidents")
+        incidents = inc_res.json()
+        assert len(incidents) > 0
+        inc_id = incidents[0]["id"]
+
+        # Update status to 'contained'
+        patch_res = await client.patch(
+            f"/api/v1/incidents/{inc_id}/status",
+            json={"status": "contained"},
+        )
+        assert patch_res.status_code == 200
+        assert patch_res.json()["status"] == "contained"
+
+        # Verify invalid status is rejected
+        bad_res = await client.patch(
+            f"/api/v1/incidents/{inc_id}/status",
+            json={"status": "invalid_status_xyz"},
+        )
+        assert bad_res.status_code == 400
+

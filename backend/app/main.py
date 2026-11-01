@@ -283,6 +283,31 @@ async def get_incident(
     }
 
 
+_ALLOWED_INCIDENT_STATUSES = {"open", "in_progress", "contained", "resolved", "closed"}
+
+
+@app.patch(f"{settings.API_V1_STR}/incidents/{{incident_id}}/status", tags=["Incidents"])
+async def update_incident_status(
+    incident_id: str,
+    status_update: Dict[str, str],
+    session: AsyncSession = Depends(get_db_session),
+) -> Dict[str, Any]:
+    new_status = status_update.get("status")
+    if not new_status or new_status not in _ALLOWED_INCIDENT_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status '{new_status}'. Allowed: {', '.join(sorted(_ALLOWED_INCIDENT_STATUSES))}",
+        )
+    repo = IncidentRepository(session)
+    updated = await repo.update_status(incident_id, new_status)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident '{incident_id}' not found",
+        )
+    return {"id": updated.id, "status": updated.status, "updated_at": updated.updated_at.isoformat()}
+
+
 @app.post(
     f"{settings.API_V1_STR}/incidents/{{incident_id}}/investigate",
     response_model=InvestigationResponse,
