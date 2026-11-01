@@ -57,7 +57,7 @@ cd backend
 alembic upgrade head
 cd ..
 
-# 5. Run the automated test suite (74 tests)
+# 5. Run the automated test suite (94 tests)
 PYTHONPATH=backend pytest backend/tests -v
 
 # 6. Start the FastAPI development server

@@ -1,6 +1,6 @@
 # CyberTrace — AI-Native SOC Incident Investigation Platform
 
-[![CI Backend](https://img.shields.io/badge/pytest-74%2F74%20passing-10b981?style=for-the-badge&logo=pytest)](https://github.com/PrathviSahu/CyberTrace)
+[![CI Backend](https://img.shields.io/badge/pytest-94%2F94%20passing-10b981?style=for-the-badge&logo=pytest)](https://github.com/PrathviSahu/CyberTrace)
 [![Frontend](https://img.shields.io/badge/Vite%20%2B%20React-TypeScript-06b6d4?style=for-the-badge&logo=react)](https://github.com/PrathviSahu/CyberTrace)
 [![AI Engine](https://img.shields.io/badge/BharatCode-Qwen%203.8%2027B-6366f1?style=for-the-badge)](https://bharatcode.ai)
 
@@ -37,8 +37,8 @@ To maintain operational integrity and transparency, CyberTrace explicitly distin
 | **Dark SOC Command Centre UI** | **Live** | Midnight navy design system, live metrics, triage SLA, log upload dropzone. |
 | **3-Panel Incident Workspace** | **Live** | Left dossier timeline, center `@xyflow/react` attack graph, right AI findings panel. |
 | **ThreatLab Benchmark Harness** | **Live** | In-memory scenario replay, $TP/FP/FN/TN$ confusion matrix computation. |
-| **Threat Hunting Query Studio** | **UI Live / API Phase 6** | Structured query UI and CES explorer; safe backend query engine scheduled for Phase 6. |
-| **Asset & Identity Inventory** | **UI Live / API Phase 6** | Tier 1–4 asset tracking; automated directory context scheduled for Phase 6. |
+| **Asset & Identity Intelligence** | **API Live / UI Phase 6.3** | Observed inventory derived from telemetry (`/api/v1/assets`, `/api/v1/identities`); canonical case grouping; UI integration in Phase 6.3. |
+| **Threat Hunting Query Studio** | **UI Live / API Phase 6.2** | Structured query UI and CES explorer; safe parameterized query engine scheduled for Phase 6.2. |
 | **Multi-Model Routing & Comparison** | **Blueprint (Phase 5.2)** | Single-model live execution (Qwen 27B); multi-model routing specified in Phase 5.2. |
 | **Case Management & Playbooks** | **Blueprint (Phase 7)** | Analyst approval gating specified in Phase 7 roadmap. |
 
@@ -133,7 +133,7 @@ cp backend/.env.example backend/.env
 # 3. Run database migrations
 cd backend && alembic upgrade head && cd ..
 
-# 4. Execute backend test suite (74 passing tests)
+# 4. Execute backend test suite (94 passing tests)
 PYTHONPATH=backend pytest backend/tests -v
 
 # 5. Start FastAPI development server
@@ -171,6 +171,10 @@ npm run dev
 | `GET` | `/api/v1/incidents/{id}/investigations` | Retrieves persisted investigation history for an incident. |
 | `GET` | `/api/v1/threatlab/scenarios` | Lists reproducible ThreatLab benchmark scenarios. |
 | `POST` | `/api/v1/threatlab/replay/{id}` | Runs in-memory scenario replay and computes confusion matrix. |
+| `GET` | `/api/v1/assets` | Paginated observed assets (hostnames & IPs) derived from telemetry. |
+| `GET` | `/api/v1/assets/{asset_type}/{asset_value}` | Detailed observed profile for a specific hostname or IP. |
+| `GET` | `/api/v1/identities` | Paginated observed user identities derived from telemetry. |
+| `GET` | `/api/v1/identities/{username}` | Detailed observed profile for a specific user identity. |
 
 ---
 
@@ -195,7 +199,7 @@ CyberTrace/
 │   │   ├── rules/                     # Deterministic detection engine (DET-001 to DET-004)
 │   │   ├── schemas/                   # Pydantic schemas (CES, Detection, Incident)
 │   │   └── threatlab/                 # ThreatLab benchmark engine & scenario catalog
-│   └── tests/                         # 74 automated pytest integration & unit tests
+│   └── tests/                         # 94 automated pytest integration & unit tests
 ├── docs/
 │   ├── TEAMMATE_QUICKSTART.md         # Step-by-step local developer onboarding guide
 │   └── platform/                      # Platform Architecture & Specification Blueprint

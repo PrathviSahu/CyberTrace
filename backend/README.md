@@ -154,11 +154,31 @@ When BharatCode AI is unconfigured (`BHARATCODE_API_KEY=""`), times out, or enco
 
 ---
 
-## 8. Local Development & Testing Commands
+## 8. Asset & Identity Intelligence Engine (Phase 6.1)
 
-### Run Full Test Suite (63 Passing Tests)
+CyberTrace extracts an authoritative observed asset and identity inventory directly from ingested security telemetry (`SecurityEventModel`):
+
+- **Zero Fabricated Metadata:** All inventory records, event counts, and first/last seen timestamps originate strictly from genuine ingested events.
+- **Canonical Entity Grouping:**
+  - **Hostnames (UPPERCASE):** Grouped via `UPPER(TRIM(hostname))` so variants like `srv-app-01` and `SRV-APP-01` resolve to the single canonical entity `SRV-APP-01`.
+  - **Identities (LOWERCASE):** Grouped via `LOWER(TRIM(username))` so accounts like `SVC_DEPLOY` and `svc_deploy` collapse into `svc_deploy`.
+  - **IP Addresses:** Distinctly extracted across source and destination IP columns. An event featuring an identical IP in both source and destination is counted exactly once via `func.count(distinct id)`.
+- **Global Pagination & Deterministic Sorting:** Candidates from hostnames and IPs are unified in a database-level subquery and ordered globally by `last_seen DESC, asset_value ASC, asset_type ASC` before applying `LIMIT` and `OFFSET`.
+- **Entity Association Isolation:** Detections and incident entities match strictly against normalized entity names within their authorized entity namespaces (`host`/`hostname`, `ip`/`source_ip`/`destination_ip`, `user`), preventing substring or prefix bleed.
+- **Truthful Provenance:** All asset and identity responses return `"provenance": "observed_telemetry"`.
+
+---
+
+## 9. Local Development & Testing Commands
+
+### Run Full Test Suite (94 Passing Tests)
 ```bash
 PYTHONPATH=backend backend/.venv/bin/pytest -c backend/pytest.ini backend/tests/ -v
+```
+
+### Run Phase 6.1 Asset & Identity Tests Only
+```bash
+PYTHONPATH=backend backend/.venv/bin/pytest -c backend/pytest.ini backend/tests/test_assets.py -v
 ```
 
 ### Run Phase 3 AI Engine Tests Only
@@ -177,4 +197,3 @@ cd backend
 cd backend
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
-

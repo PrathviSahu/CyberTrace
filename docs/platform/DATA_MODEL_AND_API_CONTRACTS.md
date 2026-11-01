@@ -249,3 +249,22 @@ class ApprovalRequestModel(Base):
 - `POST /api/v1/cases/{case_id}/playbooks/simulate`: Simulates running a response playbook.
 - `POST /api/v1/cases/{case_id}/approvals/{approval_id}/decide`: Approves or rejects a response action.
 
+### 3.8 Asset & Identity Intelligence (Phase 6.1)
+- `GET /api/v1/assets`: Paginated list of observed assets (hostnames and IPs) derived directly from `security_events`.
+  - *Query Params:* `asset_type` (`hostname` | `ip`), `search` (substring match), `limit` (max 200, default 50), `offset` (default 0).
+  - *Ordering:* Global database-level sort on `last_seen DESC, asset_value ASC, asset_type ASC`.
+  - *Provenance:* Marked with `"provenance": "observed_telemetry"`.
+- `GET /api/v1/assets/{asset_type}/{asset_value}`: Detailed profile for a specific observed asset.
+  - *Parameters:* `asset_type` (`hostname` | `ip`), `asset_value` (URL-decoded path parameter).
+  - *Normalization:* Hostnames normalized to uppercase; IPs trimmed.
+  - *Payload:* `AssetDetail` containing first seen, last seen, distinct event counts (source/destination/total), detection count, incident count, triggered detection rules summary, and linked incident IDs.
+  - *Response:* Returns 404 when not observed in any ingested event.
+- `GET /api/v1/identities`: Paginated list of observed user identities derived from `security_events.username`.
+  - *Query Params:* `search` (substring match), `limit` (max 200, default 50), `offset` (default 0).
+  - *Normalization:* Canonical lowercase grouping (`LOWER(TRIM(username))`).
+  - *Ordering:* `last_seen DESC, username ASC`.
+  - *Provenance:* Marked with `"provenance": "observed_telemetry"`.
+- `GET /api/v1/identities/{username}`: Detailed profile for a specific observed user identity.
+  - *Parameters:* `username` (URL-decoded path parameter; canonical lowercase lookup).
+  - *Payload:* `IdentityDetail` containing first seen, last seen, distinct event count, detection count, incident count, triggered detection rules, and linked incident IDs.
+  - *Response:* Returns 404 when not observed in any ingested event.

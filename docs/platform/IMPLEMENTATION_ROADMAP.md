@@ -150,9 +150,28 @@ flowchart TD
 
 ---
 
-### Feature 6: Threat Hunting Studio (Phase 6.1)
+### Feature 6: Asset & Identity Intelligence (Phase 6.1 — Backend Completed)
+- **Problem Solved:** Security telemetry lacks aggregated asset and user attribution, forcing analysts to manually correlate IP addresses and hostnames across raw logs.
+- **User Workflow:** Backend derives an observed asset and identity inventory directly from ingested `security_events` with canonical grouping, distinct event metrics, and detection/incident counts.
+- **Frontend Screens:** Asset Inventory Table (`/assets`), Identity Intelligence Directory (`/identities`) (UI integration scheduled for Phase 6.3).
+- **Backend Services:** `AssetRepository`, `IdentityRepository`, REST endpoints `/api/v1/assets` and `/api/v1/identities`.
+- **Database Changes:** Zero migrations; zero new tables (derived dynamically from `security_events`, `detections`, and `incident_entities`).
+- **API Contracts:** `GET /api/v1/assets`, `GET /api/v1/assets/{asset_type}/{asset_value}`, `GET /api/v1/identities`, `GET /api/v1/identities/{username}`.
+- **Security & Integrity Requirements:**
+  - Strict canonical case normalization (`UPPER(TRIM(hostname))` and `LOWER(TRIM(username))`).
+  - Database-level global pagination before LIMIT/OFFSET.
+  - Entity namespace isolation prevents prefix collisions (e.g., `SRV-APP` does not match `SRV-APP-01`).
+  - Provenance marked strictly as `observed_telemetry`.
+- **Acceptance Criteria & Verification:**
+  - 20 unit/integration tests passing (94/94 total backend suite).
+  - Zero data mutation from GET endpoints.
+- **Status:** **Completed & Verified (Commit `e4432c7`).**
+
+---
+
+### Feature 7: Threat Hunting Studio & Safe Query Engine (Phase 6.2)
 - **Problem Solved:** Analysts need to proactively hunt for emerging threats across historical telemetry without complex SQL syntax or security risks.
-- **User Workflow:** Analyst opens Threat Hunting $\to$ constructs filter pills (`user == svc_deploy AND bytes_out > 10MB`) $\to$ executes hunt $\to$ reviews virtualized event table $\to$ selects 5 events $\to$ clicks "Create Incident from Selection".
+- **User Workflow:** Analyst opens Threat Hunting $\to$ constructs filter pills (`user == svc_deploy AND bytes_out > 10MB`) $\to$ executes hunt $\to$ reviews virtualized event table $\to$ selects events $\to$ clicks "Create Incident from Selection".
 - **Frontend Screens:** Threat Hunting Studio (`/hunting`), Saved Searches Drawer.
 - **Backend Services:** `ThreatHuntingService`, parameterized query builder.
 - **Database Changes:** `saved_hunt_queries` table.
@@ -165,18 +184,14 @@ flowchart TD
 
 ---
 
-### Feature 7: Asset & Identity Intelligence (Phase 6.2)
-- **Problem Solved:** Security alerts lack context regarding which machine is affected, who owns it, and whether it represents critical infrastructure.
-- **User Workflow:** Analyst clicks on host `SRV-APP-01` anywhere in the UI $\to$ opens Asset Context Drawer showing criticality (Tier 1 Crown Jewel), owner, IP history, and associated past incidents.
-- **Frontend Screens:** Asset Inventory Table (`/assets`), Identity Intelligence Directory (`/identities`), Asset Context Drawer.
-- **Backend Services:** `AssetDirectoryService`, `IdentityContextService`.
-- **Database Changes:** `asset_inventory`, `identity_profiles` tables.
-- **API Contracts:** `GET /api/v1/assets`, `GET /api/v1/identities/{username}`.
-- **Security Requirements:** No fictitious data generation; all risk scores and observed entities derived from actual telemetry.
-- **Acceptance Criteria:**
-  - Asset criticality tiers clearly badged.
-  - Displays accurate last-seen timestamps and linked active incidents.
-- **Complexity:** Medium (2 days).
+### Feature 8: Frontend Asset, Identity & Threat Hunting Integration (Phase 6.3)
+- **Problem Solved:** Connects existing dark SOC frontend views to Phase 6.1 & 6.2 backend APIs, replacing mock fixtures with observed telemetry.
+- **Frontend Screens:** `AssetInventory.tsx`, `ThreatHunting.tsx`, `DataProvenanceBadge.tsx`.
+- **Key Deliverables:**
+  - Extend `DataProvenance` union type in `frontend/src/types/index.ts` to include `"observed_telemetry"`.
+  - Update `DataProvenanceBadge.tsx` to render `"observed_telemetry"` using neutral styling (never defaulting to Demo Benchmark).
+  - Wire live API fetch hooks into `AssetInventory.tsx`.
+- **Complexity:** Low-Medium (1 day).
 
 ---
 
