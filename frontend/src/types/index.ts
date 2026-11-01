@@ -1,6 +1,6 @@
 export type Severity = "critical" | "high" | "medium" | "low" | "informational";
 export type IncidentStatus = "open" | "in_progress" | "contained" | "resolved" | "closed";
-export type DataProvenance = "live_telemetry" | "synthetic_benchmark" | "calculated_evaluation";
+export type DataProvenance = "live_telemetry" | "synthetic_benchmark" | "calculated_evaluation" | "observed_telemetry";
 
 export interface CommonEvent {
   id: string;
@@ -140,11 +140,64 @@ export interface OverviewMetrics {
   openIncidents: number;
   criticalAlerts: number;
   monitoredAssets: number;
-  detectionCoveragePercent: number;
-  eventsIngested24h: number;
-  meanTimeToTriageMin: number;
+  detectionCoveragePercent: number | null;
+  eventsIngested24h?: number;
+  eventsIngestedSample: number;
+  totalDetectionsFired: number;
+  meanTimeToTriageMin: number | null;
   aiInvestigationsCount: number;
-  providerStatus: "healthy" | "degraded" | "fallback";
+  providerStatus: "healthy" | "degraded" | "offline";
+  provenance: DataProvenance;
+}
+
+export interface TriggeredRule {
+  rule_id: string;
+  rule_name: string;
+  severity: string;
+}
+
+export interface AssetSummary {
+  asset_type: "hostname" | "ip";
+  asset_value: string;
+  first_seen?: string | null;
+  last_seen?: string | null;
+  event_count: number;
+  source_event_count?: number | null;
+  destination_event_count?: number | null;
+  detection_count: number;
+  incident_count: number;
+  provenance: DataProvenance;
+}
+
+export interface AssetDetail extends AssetSummary {
+  triggered_rules: TriggeredRule[];
+  incident_ids: string[];
+}
+
+export interface AssetListResponse {
+  assets: AssetSummary[];
+  total: number;
+  provenance: DataProvenance;
+}
+
+export interface IdentitySummary {
+  username: string;
+  first_seen?: string | null;
+  last_seen?: string | null;
+  event_count: number;
+  detection_count: number;
+  incident_count: number;
+  provenance: DataProvenance;
+}
+
+export interface IdentityDetail extends IdentitySummary {
+  triggered_rules: TriggeredRule[];
+  incident_ids: string[];
+}
+
+export interface IdentityListResponse {
+  identities: IdentitySummary[];
+  total: number;
   provenance: DataProvenance;
 }
 
@@ -158,6 +211,7 @@ export interface AssetRecord {
   last_seen: string;
   active_incident_count: number;
   risk_score: number;
+  provenance?: DataProvenance;
 }
 
 export interface ConfusionMatrix {

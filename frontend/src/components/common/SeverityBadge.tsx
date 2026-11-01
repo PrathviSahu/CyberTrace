@@ -14,60 +14,58 @@ export const SeverityBadge: React.FC<SeverityBadgeProps> = ({
 }) => {
   const norm = (severity || "low").toLowerCase() as Severity;
 
-  const styles: Record<Severity, { bg: string; text: string; border: string; dot: string }> = {
+  const styles: Record<Severity, { bg: string; text: string; border: string; dot: string; label: string }> = {
     critical: {
-      bg: "bg-red-500/10",
-      text: "text-red-400",
-      border: "border-red-500/30",
-      dot: "bg-red-500 shadow-[0_0_8px_#ef4444]",
+      bg: "bg-[#E06C68]/12",
+      text: "text-[#E06C68]",
+      border: "border-[#E06C68]/25",
+      dot: "bg-[#E06C68]",
+      label: "Critical",
     },
     high: {
-      bg: "bg-orange-500/10",
-      text: "text-orange-400",
-      border: "border-orange-500/30",
-      dot: "bg-orange-400 shadow-[0_0_8px_#f97316]",
+      bg: "bg-[#D99A54]/12",
+      text: "text-[#D99A54]",
+      border: "border-[#D99A54]/25",
+      dot: "bg-[#D99A54]",
+      label: "High",
     },
     medium: {
-      bg: "bg-amber-500/10",
-      text: "text-amber-300",
-      border: "border-amber-500/30",
-      dot: "bg-amber-400 shadow-[0_0_6px_#f59e0b]",
+      bg: "bg-[#C9B86B]/12",
+      text: "text-[#C9B86B]",
+      border: "border-[#C9B86B]/25",
+      dot: "bg-[#C9B86B]",
+      label: "Medium",
     },
     low: {
-      bg: "bg-sky-500/10",
-      text: "text-sky-400",
-      border: "border-sky-500/30",
-      dot: "bg-sky-400",
+      bg: "bg-[#76A58B]/12",
+      text: "text-[#76A58B]",
+      border: "border-[#76A58B]/25",
+      dot: "bg-[#76A58B]",
+      label: "Low",
     },
     informational: {
-      bg: "bg-slate-500/10",
-      text: "text-slate-400",
-      border: "border-slate-500/30",
-      dot: "bg-slate-400",
+      bg: "bg-[#8A94A0]/12",
+      text: "text-[#8A94A0]",
+      border: "border-[#8A94A0]/25",
+      dot: "bg-[#8A94A0]",
+      label: "Info",
     },
   };
 
   const current = styles[norm] || styles.informational;
 
   const sizeClasses = {
-    sm: "px-1.5 py-0.5 text-[10px] tracking-wide",
-    md: "px-2.5 py-1 text-xs tracking-wider",
-    lg: "px-3 py-1.5 text-sm tracking-wider",
+    sm: "text-[11px] px-2 py-0.5",
+    md: "text-xs px-2.5 py-0.5",
+    lg: "text-sm px-3 py-1",
   };
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-md font-mono uppercase font-semibold border ${current.bg} ${current.text} ${current.border} ${sizeClasses[size]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full font-sans font-medium border ${current.bg} ${current.text} ${current.border} ${sizeClasses[size]} select-none`}
     >
-      {showDot && (
-        <span
-          className={`inline-block rounded-full ${norm === "critical" ? "animate-pulse" : ""} ${current.dot} ${
-            size === "sm" ? "w-1.5 h-1.5" : "w-2 h-2"
-          }`}
-        />
-      )}
-      {norm}
+      {showDot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${current.dot}`} />}
+      <span>{current.label}</span>
     </span>
   );
 };
-

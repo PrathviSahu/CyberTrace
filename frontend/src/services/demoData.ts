@@ -12,6 +12,8 @@ export const DEMO_OVERVIEW_METRICS: OverviewMetrics = {
   monitoredAssets: 148,
   detectionCoveragePercent: 87.5,
   eventsIngested24h: 1425890,
+  eventsIngestedSample: 17,
+  totalDetectionsFired: 6,
   meanTimeToTriageMin: 4.2,
   aiInvestigationsCount: 18,
   providerStatus: "healthy",

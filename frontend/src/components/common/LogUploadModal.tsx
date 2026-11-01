@@ -51,22 +51,22 @@ export const LogUploadModal: React.FC<LogUploadModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="relative w-full max-w-lg bg-bg-surface1 border border-border-subtle rounded-2xl shadow-modal overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="relative w-full max-w-lg bg-[#1D2125] border border-[#30363C] rounded-xl shadow-modal overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-bg-surface2/60">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#30363C] bg-[#24282C]">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-cyan-400">
+            <div className="p-2 bg-[#1D2125] border border-[#30363C] rounded-md text-[#B58A61]">
               <UploadCloud className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-mono font-bold text-white">Ingest Security Logs</h3>
-              <p className="text-xs text-slate-400 font-mono">
-                Multi-format parser: Linux Auth, Windows Event, Zeek Conn, CSV, JSON
+              <h3 className="text-sm font-semibold text-[#E9ECEF]">Ingest Security Telemetry</h3>
+              <p className="text-xs text-[#A0A7AE]">
+                Parses Linux Auth, Windows Event, Zeek Conn, CSV, and JSON logs
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-[#737D87] hover:text-[#E9ECEF] transition-colors cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -77,10 +77,10 @@ export const LogUploadModal: React.FC<LogUploadModalProps> = ({
             <>
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors ${
+                className={`border border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors ${
                   file
-                    ? "border-cyan-500/50 bg-cyan-950/20"
-                    : "border-border-subtle hover:border-cyan-500/30 hover:bg-bg-surface2/50"
+                    ? "border-[#B58A61] bg-[#2B2722]/30"
+                    : "border-[#30363C] hover:border-[#B58A61]/40 hover:bg-[#24282C]"
                 }`}
               >
                 <input
@@ -92,19 +92,19 @@ export const LogUploadModal: React.FC<LogUploadModalProps> = ({
                 />
                 {file ? (
                   <div className="space-y-2">
-                    <FileText className="w-10 h-10 text-cyan-400 mx-auto" />
-                    <div className="font-mono text-sm text-white font-medium">{file.name}</div>
-                    <div className="text-xs font-mono text-slate-400">
+                    <FileText className="w-10 h-10 text-[#B58A61] mx-auto" />
+                    <div className="text-sm text-[#E9ECEF] font-medium">{file.name}</div>
+                    <div className="text-xs text-[#A0A7AE]">
                       {(file.size / 1024).toFixed(1)} KB • Ready for Ingestion
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <UploadCloud className="w-10 h-10 text-slate-500 mx-auto" />
-                    <div className="font-mono text-sm text-slate-300">
+                    <UploadCloud className="w-10 h-10 text-[#737D87] mx-auto" />
+                    <div className="text-sm text-[#A0A7AE]">
                       Click to browse or drag security log file
                     </div>
-                    <div className="text-xs font-mono text-slate-500">
+                    <div className="text-xs text-[#737D87]">
                       Supports Linux Syslog, Windows Security XML/CSV, Zeek Conn, or CES JSON (max 50 MB)
                     </div>
                   </div>
@@ -112,7 +112,7 @@ export const LogUploadModal: React.FC<LogUploadModalProps> = ({
               </div>
 
               {error && (
-                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-start gap-2 text-xs font-mono text-red-400">
+                <div className="p-3 rounded-md bg-[#E06C68]/10 border border-[#E06C68]/30 flex items-start gap-2 text-xs text-[#E06C68]">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
@@ -120,50 +120,50 @@ export const LogUploadModal: React.FC<LogUploadModalProps> = ({
             </>
           ) : (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-400 font-mono font-bold text-sm">
+              <div className="p-4 rounded-lg bg-[#76A58B]/10 border border-[#76A58B]/30 space-y-1">
+                <div className="flex items-center gap-2 text-[#76A58B] font-semibold text-sm">
                   <CheckCircle2 className="w-5 h-5" />
                   <span>Ingestion & Correlation Complete</span>
                 </div>
-                <p className="text-xs font-mono text-slate-300">
-                  File successfully parsed, normalized into CES, and evaluated through deterministic rule engine.
+                <p className="text-xs text-[#A0A7AE]">
+                  File parsed, normalized into CES, and evaluated through deterministic rule engine.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                <div className="p-3 bg-bg-surface2/60 border border-border-subtle rounded-lg">
-                  <span className="text-slate-400">Format Detected:</span>
-                  <div className="text-cyan-300 font-bold mt-0.5">{result.detected_format}</div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-[#24282C] border border-[#30363C] rounded-md">
+                  <span className="text-[#737D87]">Format Detected:</span>
+                  <div className="text-[#B58A61] font-semibold font-mono mt-0.5">{result.detected_format}</div>
                 </div>
-                <div className="p-3 bg-bg-surface2/60 border border-border-subtle rounded-lg">
-                  <span className="text-slate-400">Parsed CES Events:</span>
-                  <div className="text-white font-bold mt-0.5">{result.parsed_events_count}</div>
+                <div className="p-3 bg-[#24282C] border border-[#30363C] rounded-md">
+                  <span className="text-[#737D87]">Parsed CES Events:</span>
+                  <div className="text-[#E9ECEF] font-semibold font-mono mt-0.5">{result.parsed_events_count}</div>
                 </div>
-                <div className="p-3 bg-bg-surface2/60 border border-border-subtle rounded-lg">
-                  <span className="text-slate-400">Triggered Detections:</span>
-                  <div className="text-amber-400 font-bold mt-0.5">{result.detections_count}</div>
+                <div className="p-3 bg-[#24282C] border border-[#30363C] rounded-md">
+                  <span className="text-[#737D87]">Triggered Detections:</span>
+                  <div className="text-[#D99A54] font-semibold font-mono mt-0.5">{result.detections_count}</div>
                 </div>
-                <div className="p-3 bg-bg-surface2/60 border border-border-subtle rounded-lg">
-                  <span className="text-slate-400">Correlated Incidents:</span>
-                  <div className="text-emerald-400 font-bold mt-0.5">{result.incidents_count}</div>
+                <div className="p-3 bg-[#24282C] border border-[#30363C] rounded-md">
+                  <span className="text-[#737D87]">Correlated Incidents:</span>
+                  <div className="text-[#76A58B] font-semibold font-mono mt-0.5">{result.incidents_count}</div>
                 </div>
               </div>
 
-              <div className="p-3 bg-black/40 border border-border-subtle rounded-lg text-[11px] font-mono text-slate-400 truncate">
-                <span className="text-slate-500">SHA-256 Provenance:</span> {result.source_file_hash}
+              <div className="p-2.5 bg-[#191C1F] border border-[#30363C] rounded-md text-[11px] font-mono text-[#737D87] truncate">
+                <span>SHA-256: </span>{result.source_file_hash}
               </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border-subtle bg-bg-surface2/40 flex items-center justify-end gap-3">
+        <div className="px-6 py-4 border-t border-[#30363C] bg-[#24282C] flex items-center justify-end gap-3">
           {!result ? (
             <>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg border border-border-subtle text-xs font-mono text-slate-400 hover:text-white hover:bg-bg-hover transition-colors"
+                className="px-4 py-2 rounded-md border border-[#30363C] text-xs font-medium text-[#A0A7AE] hover:text-[#E9ECEF] hover:bg-[#1D2125] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -171,7 +171,7 @@ export const LogUploadModal: React.FC<LogUploadModalProps> = ({
                 type="button"
                 disabled={!file || isUploading}
                 onClick={handleUpload}
-                className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-mono font-bold text-black flex items-center gap-2 transition-all shadow-[0_0_12px_rgba(6,182,212,0.3)]"
+                className="px-4 py-2 rounded-md bg-[#B58A61] hover:bg-[#C69A70] disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold text-[#111315] flex items-center gap-2 transition-colors cursor-pointer"
               >
                 {isUploading ? (
                   <>
@@ -188,14 +188,14 @@ export const LogUploadModal: React.FC<LogUploadModalProps> = ({
               <button
                 type="button"
                 onClick={handleReset}
-                className="px-4 py-2 rounded-lg border border-border-subtle text-xs font-mono text-slate-300 hover:bg-bg-hover transition-colors"
+                className="px-4 py-2 rounded-md border border-[#30363C] text-xs font-medium text-[#A0A7AE] hover:text-[#E9ECEF] hover:bg-[#1D2125] transition-colors cursor-pointer"
               >
                 Upload Another
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-xs font-mono font-bold text-black transition-all"
+                className="px-4 py-2 rounded-md bg-[#B58A61] hover:bg-[#C69A70] text-xs font-semibold text-[#111315] transition-colors cursor-pointer"
               >
                 View Incidents
               </button>
@@ -206,4 +206,3 @@ export const LogUploadModal: React.FC<LogUploadModalProps> = ({
     </div>
   );
 };
-

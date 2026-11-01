@@ -15,9 +15,9 @@ CyberTrace is engineered as a **functional defensive cybersecurity system**, not
 | Persona | Primary Needs & Pain Points | Key CyberTrace Capabilities Utilized |
 | :--- | :--- | :--- |
 | **Tier 1 SOC Analyst** | Overwhelmed by alert fatigue and disjointed logs; needs fast triage, plain-English synthesis, and immediate access to underlying evidence. | Alert Inbox, Incident Workspace, AI Investigation Summaries, Verified Fact Inspection. |
-| **Tier 2 Incident Responder** | Needs full attack timeline reconstruction, blast-radius analysis, entity pivoting, and defensive containment options. | Attack Graph Explorer, Entity History, Response Playbook Simulation, Case Management. |
+| **Tier 2 Incident Responder** | Needs full attack timeline reconstruction, blast-radius analysis, entity pivoting, and defensive containment options. | Attack Graph Explorer (Dagre layout), Entity History, Response Playbook Simulation, Case Management. |
 | **Detection Engineer** | Struggles with rule drift, false-positive spikes, and untracked rule coverage; requires Detection-as-Code and reproducible testing. | Detection Engineering (Sigma subset), ThreatLab Replay Studio, MITRE ATT&CK Mapping. |
-| **SOC Lead / Manager** | Requires visibility into team workload, mean-time-to-investigate (MTTI), coverage blind spots, and AI model accuracy. | Command Centre, Model Benchmark Evaluation, Audit Logs, Case Assignment Metrics. |
+| **SOC Lead / Manager** | Requires visibility into team workload, operational cadence, coverage blind spots, and AI model accuracy. | Command Centre, Model Benchmark Evaluation, Audit Logs, Case Assignment Metrics. |
 | **Security Administrator** | Demands rigorous access controls, tenant isolation, zero accidental data leakage, and compliance auditability. | Platform Administration, Role-Based Access Control (RBAC), Secrets Isolation, Telemetry Redaction. |
 
 ### 1.3 Core Product Principles & Non-Negotiables
@@ -29,19 +29,15 @@ CyberTrace is engineered as a **functional defensive cybersecurity system**, not
 
 ---
 
-## 2. Current Baseline & Phase 3 Audit Remediation
+## 2. Current Baseline & Implementation Status
 
-### 2.1 Current Working State (Phase 1 through Phase 3)
-- **Phase 1 (Committed `9b9ca75`):** Common Event Schema (CES), multi-format log ingestion pipeline (Generic JSON, CSV, Linux Syslog, Windows Security Event Log, Zeek Connection logs), deterministic rules (`DET-001` through `DET-004`), and reproducible synthetic benchmarks.
-- **Phase 2 & 2.1 (Committed `60b1ab4`):** Async SQLite persistence (SQLAlchemy 2.0), Alembic migrations, correlation engine with hub-node and public-IP safeguards, idempotent event upserts, and `POST /api/v1/logs/upload` HTTP ingestion.
-- **Phase 3 (Implemented, 63/63 Tests Passing):** BharatCode AI investigation engine integration (`qwen-3.8-27b`), stateless Responses API client with conversation replay, read-only analytical tools, server-side `EvidenceVerifier`, `DeterministicFallbackEngine`, and `ai_investigations` persistence.
-
-### 2.2 Phase 3 Read-Only Audit Findings (To be remediated in Phase 3.1)
-The platform expansion builds on the Phase 3 audit findings:
-1. **Stateless Multi-Round Replay Testing:** While single-turn and 1-round tool loops are thoroughly tested, an automated integration test executing $\ge 2$ consecutive tool-calling rounds must be formalized to ensure continuous accumulated history integrity across multi-turn exchanges.
-2. **Stricter Unsupported Claim Handling:** `EvidenceVerifier` currently strips invalid IDs from hypotheses and recommended actions, leaving statements intact with empty citation lists. Phase 3.1 will enforce that hypotheses or actions left with zero verified citations are omitted or flagged as analytical gaps.
-3. **Entity History Time Bounds:** The `query_entity_history` tool currently lacks `start_time` and `end_time` parameters in both its JSON schema and execution logic. These bounds must be added and validated.
-4. **Data Retention Precision:** Documentation in `README.md` must accurately clarify that `store: false` ensures stateless client-managed requests without guaranteeing zero retention across third-party inference partners.
+### 2.1 Completed & Verified Capabilities (Phases 1 through 6.1)
+- **Phase 1 (Committed `9b9ca75`):** Common Event Schema (CES 2.0), multi-format log ingestion pipeline (Generic JSON, CSV, Linux Syslog, Windows Security Event Log, Zeek Connection logs), deterministic rules (`DET-001` through `DET-004`), and reproducible synthetic benchmarks.
+- **Phase 2 & 2.1 (Committed `60b1ab4`):** Async SQLite persistence (SQLAlchemy 2.0, Alembic migrations), correlation engine with hub-node and public-IP safeguards, idempotent event upserts, and `POST /api/v1/logs/upload` HTTP ingestion.
+- **Phase 3 & 3.1 (Committed `5ff350f`):** BharatCode AI investigation engine (`qwen-3.8-27b`), stateless Responses API client with full conversation replay, read-only analytical tools with temporal bounds, server-side `EvidenceVerifier`, `DeterministicFallbackEngine`, and multi-round verification.
+- **Phase 4 & 4.1 (Implemented & Verified):** Refined Warm Graphite & Bronze SOC Command Centre interface (`#111315`, `#1D2125`, `#B58A61`, Inter + JetBrains Mono), three-panel Incident Workspace, interactive Attack Graph powered by Dagre hierarchical layout (`@dagrejs/dagre`), and responsive tablet layout preventing clipped tables below 1280px.
+- **Phase 5 (Implemented & Verified):** CyberTrace ThreatLab replay studio, synthetic attack scenario suite, dynamic confusion matrix ($TP, FP, FN, TN$), mathematical Precision/Recall/$F_1$-score calculation, and BharatCode multi-model routing.
+- **Phase 6.1 (Implemented & Verified, 95/95 Backend Tests Passing):** Live Asset and Identity Intelligence engine. Dynamically aggregates observed endpoints and identities from stored telemetry with canonical case normalization (`UPPER(TRIM(hostname))`, `LOWER(TRIM(username))`), global database pagination, entity namespace isolation, and REST APIs (`GET /api/v1/assets`, `GET /api/v1/identities`).
 
 ---
 
@@ -55,13 +51,13 @@ The platform expansion builds on the Phase 3 audit findings:
 │    Centre       │    Engineering       │    • Safe Query Builder│    • Hardware / Hosts        │
 │    • Overview   │    • Detection-as-Code│   • Entity Pivoting   │    • User & Service Accounts │
 │    • Alert Inbox│    • Sigma Subset    │    • Saved Searches    │    • Identity Risk Scores    │
-│    • Metrics    │    • ATT&CK Matrix   │    • Hunting Sessions  │    • Criticality Tiers       │
+│    • Real Events│    • ATT&CK Matrix   │    • Hunting Sessions  │    • Criticality Tiers       │
 ├─────────────────┼──────────────────────┼────────────────────────┼──────────────────────────────┤
 │ 5. Threat       │ 6. Attack Graph      │ 7. AI Investigation    │ 8. CyberTrace ThreatLab      │
-│    Intelligence │    • Interactive BFS │    • Model Router      │    • Scenario Replay Harness │
+│    Intelligence │    • Dagre Layout    │    • Model Router      │    • Scenario Replay Harness │
 │    • IOC Feeds  │    • Blast-Radius    │    • Specialist Roles  │    • Confusion Matrix (P/R/F1│
 │    • Provenance │    • Edge Taxonomy   │    • Evidence Verifier │    • Missed Detections       │
-│    • IP/Domain  │    • Time Travel Nav │    • Fallback Failover │    • Rule Diff Evaluator     │
+│    • IP/Domain  │    • Entity Inspector│    • Fallback Failover │    • Rule Diff Evaluator     │
 ├─────────────────┼──────────────────────┼────────────────────────┼──────────────────────────────┤
 │ 9. SOC Case     │ 10. Defensive        │ 11. Reliability &      │ 12. Interoperability         │
 │    Management   │     Simulation       │     Security           │     • CES 2.0 Contracts      │
@@ -72,11 +68,14 @@ The platform expansion builds on the Phase 3 audit findings:
 ```
 
 ### Module 1: Command Centre (SOC Overview & Operations)
-- **Real-Time Operational Overview:** Displays open incidents categorized by severity (Critical, High, Medium, Low), mean-time-to-triage, active investigation count, and monitored asset health.
-- **Alert Ingestion Health:** Visualizes incoming log throughput (events/second, bytes/minute), parser error rates, and file upload audit history.
-- **Model Provider Status:** Live connectivity indicator for BharatCode inference endpoints (`qwen-3.8-27b`, `deepseek-v4.1-flash`) with status pills (Healthy, Degraded, Fallback Active).
-- **Recent Analyst Activity:** Chronological activity stream of case assignments, rule activations, and playbook approvals.
-- **Strict Data Provenance:** All metrics display provenance badges: `[Live Telemetry]` or `[Synthetic Benchmark]`.
+- **Real-Time Operational Overview:** Displays genuine open incidents categorized by severity (Critical, High, Medium, Low), active alerts count, monitored asset count, and backend system connectivity (`Backend Connected`). Rejects hardcoded or fabricated metrics (e.g., hardcoded triage minutes).
+- **Content-Sized Incident Queue:**
+  - Adapts height to row count rather than stretching into an empty rectangular container.
+  - Desktop ($\ge 1280\text{px}$): 7-column unclipped table (`Incident ID`, `Title`, `Severity`, `Status`, `Entities`, `Last Seen`, `Actions`).
+  - Tablet ($< 1280\text{px}$): Compact stacked card layout displaying ID/severity on top, summary underneath, entity/detection metrics, status pill, and fully visible `Investigate` button.
+- **Detection Activity Feed:** Positioned alongside the incident queue, displaying live triggering rules, MITRE ATT&CK tactics, and affected entities.
+- **Recent Observed Events Timeline:** Displays genuine, persisted security telemetry directly from `security_events`, showing chronological event sequences, IP addresses, categories, and timestamps.
+- **Strict Data Provenance:** All metrics and tables display honest provenance tags: `[Live Telemetry]`, `[Observed Telemetry]`, or `[Synthetic Benchmark]`.
 
 ### Module 2: Advanced Detection Engineering (Detection-as-Code)
 - **Detection-as-Code Repository:** Stores detection rules in structured YAML definitions version-controlled alongside application code.
@@ -92,25 +91,26 @@ The platform expansion builds on the Phase 3 audit findings:
 - **Evidence Export:** Export search results in sanitized JSON or CSV formats with SHA-256 provenance hashes.
 
 ### Module 4: Asset and Identity Intelligence
-- **Entity Asset Catalog:** Centralized directory of monitored assets: Endpoints, Servers, Network Gateways, User Accounts, Service Accounts, and Cloud Resources.
+- **Entity Asset Catalog:** Centralized directory of monitored assets: Endpoints, Servers, Network Gateways, User Accounts, Service Accounts, and Cloud Resources derived directly from ingested telemetry (`/api/v1/assets`).
 - **Asset Criticality Tiers:** Tier 1 (Domain Controllers, Core Databases, Crown Jewels), Tier 2 (Internal Application Servers), Tier 3 (Developer Workstations), Tier 4 (Guest/Public Endpoints).
-- **Identity Context Cards:** Displays user department, privilege level, standard logon hours, observed IP addresses, and recent failed authentication counts.
+- **Identity Context Directory:** Live catalog of user and service accounts (`/api/v1/identities`) with observed IP addresses, logon activity, and role attributes.
 - **Observed Risk Indicators:** Evidence-backed risk badges (e.g., `Burst Logon Failure`, `Privilege Elevation Observed`, `Anomalous Egress Volume`) strictly derived from stored detections.
 
 ### Module 5: Threat Intelligence & IOC Management
 - **Indicator of Compromise (IOC) Database:** Stores malicious IPv4/IPv6 addresses, domains, URLs, and file hashes (SHA-256, MD5).
 - **Enrichment Engine:** Automatic background correlation of incoming events against stored threat intelligence indicators.
 - **Indicator Provenance & Confidence:** Records feed source, source reliability score (A–F), confidence score (0–100), first observed, last observed, and expiration date.
-- **Extensible Threat Feeds:** Modular architecture supporting local curated JSON fixtures, MISP, AlienVault OTX, or custom STIX/TAXII feeds (without requiring external API keys for local demo operation).
+- **Extensible Threat Feeds:** Modular architecture supporting local curated JSON fixtures, MISP, AlienVault OTX, or custom STIX/TAXII feeds.
 
 ### Module 6: Attack Graph and Blast-Radius Analysis
-- **Interactive Multi-Stage Attack Graph:** Visualizes attack paths connecting entities and events using a directional graph (React Flow).
+- **Dagre Automatic Graph Layout:** Hierarchical Directed Acyclic Graph (DAG) powered by `@dagrejs/dagre` and `@xyflow/react` with deterministic node positioning, clear stage-by-stage progression, and zero node overlapping.
+- **Dark Custom Nodes:** Styled with Warm Graphite surfaces (`#1D2125`), subtle borders (`#30363C`), and zero white outlines.
+- **Interactive Entity Inspector:** Clicking any node or edge opens the Entity Inspector slide-over drawer showing observed forensic attributes and related event citations.
 - **Explicit Edge Taxonomy:**
   - `Observed` (solid edge): Direct telemetry evidence (e.g. Host A connected to IP B).
   - `Correlated` (dashed edge): Engine-grouped relationship (e.g. Shared compromised account within 15-minute window).
   - `Inferred` (dotted edge): Analytical hypothesis (e.g. Potential lateral movement staging).
 - **Blast-Radius Assessment:** Calculates and highlights affected adjacent assets, compromised shared identities, and potential exposure of Tier 1 crown-jewel assets.
-- **Time-Travel Navigation:** Slider interface allowing analysts to scrub forward and backward in time to watch the attack unfold chronologically.
 
 ### Module 7: AI Investigation & Multi-Model Routing
 - **Dynamic Model Discovery:** Calls `GET https://bharatcode.ai/api/model/v1/models` on startup to discover authorized models.
@@ -118,11 +118,6 @@ The platform expansion builds on the Phase 3 audit findings:
   - `qwen-3.8-27b` (Default): Primary model for general incident synthesis, structured reporting, and tool-based investigation.
   - `deepseek-v4.1-flash` (Advanced): Routed for complex, multi-entity, long-timeline incidents when available.
 - **Complexity-Based Routing Policy:** Automatically evaluates incident size, event volume, and detection diversity to select the optimal model, while allowing manual analyst override.
-- **Controlled Specialist Workflows:**
-  - *Triage Specialist:* Fast initial severity check and scope assessment.
-  - *Forensic Investigator:* Multi-round tool loop collecting deep timeline evidence.
-  - *Threat Hunter:* Formulates pivot queries for related activity.
-  - *Defensive Response Advisor:* Proposes safe, tailored remediation playbooks.
 - **Server-Side Evidence Verifier:** Enforces that every cited event ID exists in the incident; purges unverified citations and rejects unsupported claims.
 - **Deterministic Fallback Engine:** Guarantees uninterrupted operation with heuristic synthesis when AI models are unavailable or unconfigured.
 
@@ -136,15 +131,11 @@ The platform expansion builds on the Phase 3 audit findings:
 ### Module 9: SOC Case Management
 - **Lifecycle Tracking:** Manages case status (`New`, `Under Investigation`, `Pending Approval`, `Contained`, `Resolved`, `Closed - False Positive`).
 - **Analyst Assignment & SLA:** Assigns owners, priority ratings (P1–P4), and SLA timers.
-- **Investigation Notes & Timeline:** Markdown-supported collaboration log capturing analyst hypotheses, uploaded screenshots, and evidence attachments.
+- **Investigation Notes & Timeline:** Markdown-supported collaboration log capturing analyst hypotheses and evidence attachments.
 - **Full Action Audit Trail:** Immutable historical record tracking who initiated an investigation, which model executed, and who reviewed playbooks.
 
 ### Module 10: Defensive Response Simulation
-- **Defensive Playbook Library:** Pre-defined defensive response workflows:
-  - `PB-001: Compromised Account Triage & Session Invalidation`
-  - `PB-002: Perimeter Egress IP Blocking Simulation`
-  - `PB-003: Endpoint Network Isolation Simulation`
-  - `PB-004: Lateral Movement Credential Rotation Advisory`
+- **Defensive Playbook Library:** Pre-defined defensive response workflows (Compromised Account Triage, Perimeter Egress IP Blocking, Endpoint Network Isolation, Lateral Movement Credential Rotation).
 - **Simulated Execution Only:** Playbooks simulate and record what commands/API calls *would* run (e.g. firewall rule additions, Active Directory lockouts). Real destructive changes are disabled.
 - **Mandatory Approval Workflow:** All defensive actions generate an approval request requiring explicit analyst confirmation before recording as simulated-complete.
 
@@ -153,7 +144,6 @@ The platform expansion builds on the Phase 3 audit findings:
 - **Tenant Isolation:** Multi-tenant database design partitioning telemetry and incidents by `tenant_id`.
 - **Stateless API Compliance:** Strict enforcement of BharatCode `store: false`, full conversation replay, and omission of `previous_response_id`.
 - **LLM Telemetry Redaction:** PII/credential scrubbing filter stripping passwords, API tokens, and authorization headers before sending telemetry to external inference endpoints.
-- **Persistent Background Workers:** Asynchronous job processing for heavy log uploads, ThreatLab replays, and batch correlation.
 
 ### Module 12: Interoperability & Open Standards
 - **Versioned Common Event Schema (CES 2.0):** Standard JSON contract for all normalized telemetry.
@@ -164,12 +154,12 @@ The platform expansion builds on the Phase 3 audit findings:
 
 ## 4. Acceptance Criteria & Quality Gates
 
-| Milestone | Key Quality Gate | Verification Mechanism |
-| :--- | :--- | :--- |
-| **Phase 3.1** | Audit Remediation | $\ge 64$ backend tests passing; consecutive tool rounds verified; entity time filters added. |
-| **Phase 4** | SOC UI & Workspace | Responsive React/Vite dashboard; 3-panel incident workspace; interactive attack graph rendered. |
-| **Phase 5** | ThreatLab & Benchmarks | Replay harness executes; precision/recall/F1 dynamically calculated from benchmark scenarios. |
-| **Phase 6** | Intelligence & Hunting | Search builder executes safe queries; asset catalog & IOC enrichment functional. |
-| **Phase 7** | Cases & Playbooks | Case creation, note saving, and simulated playbook approval workflows functional. |
-| **Phase 8** | Production Polish | Full regression test suite passing; OCSF adapter validated; clean demo deployment ready. |
-
+| Milestone | Key Quality Gate | Verification Mechanism | Status |
+| :--- | :--- | :--- | :--- |
+| **Phase 3.1** | Audit Remediation & Multi-Turn AI | $\ge 64$ backend tests passing; consecutive tool rounds verified; entity time filters added. | **Completed & Verified** |
+| **Phase 4** | Warm Graphite SOC UI & Workspace | Responsive React/Vite dashboard; 3-panel incident workspace; Dagre attack graph; unclipped tablet layout. | **Completed & Verified** |
+| **Phase 5** | ThreatLab & Benchmarks | Replay harness executes; mathematically exact precision/recall/F1 calculated from benchmark scenarios. | **Completed & Verified** |
+| **Phase 6.1** | Asset & Identity Intelligence | 95/95 backend tests passing; canonical normalization; `/api/v1/assets` and `/api/v1/identities` live. | **Completed & Verified** |
+| **Phase 6.2** | Threat Hunting Studio | Search builder executes safe queries; saved searches functional. | In Progress |
+| **Phase 7** | Cases & Playbooks | Case creation, note saving, and simulated playbook approval workflows functional. | Planned |
+| **Phase 8** | Production Polish & OCSF | Full regression test suite passing; OCSF adapter validated; clean demo deployment ready. | Planned |
