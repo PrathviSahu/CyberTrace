@@ -13,12 +13,12 @@ CyberTrace maintains `main` as the stable baseline, while active product develop
 git clone https://github.com/PrathviSahu/CyberTrace.git
 cd CyberTrace
 
-# 2. Checkout the latest active feature branch (contains Phase 4 & Phase 5)
-git checkout feature/phase-4-soc-frontend
+# 2. Checkout the active feature branch (contains Phases 4, 5 & 6.1)
+git checkout feature/phase-6.1-asset-identity-intelligence
 
 # 3. Confirm your branch
 git status --short --branch
-# Expected: ## feature/phase-4-soc-frontend...origin/feature/phase-4-soc-frontend
+# Expected: ## feature/phase-6.1-asset-identity-intelligence
 ```
 
 ---
@@ -57,7 +57,7 @@ cd backend
 alembic upgrade head
 cd ..
 
-# 5. Run the automated test suite (94 tests)
+# 5. Run the automated test suite (95 tests)
 PYTHONPATH=backend pytest backend/tests -v
 
 # 6. Start the FastAPI development server
@@ -73,7 +73,7 @@ The API documentation is interactively accessible at:
 
 ## 4. Frontend Setup & Startup
 
-The frontend is a dark SOC interface built with **React 18**, **TypeScript**, **Tailwind CSS**, and **@xyflow/react**.
+The frontend is a refined Warm Graphite SOC interface built with **React 18**, **TypeScript**, **Tailwind CSS**, **@xyflow/react**, and **@dagrejs/dagre**.
 
 In a new terminal tab:
 
@@ -110,7 +110,7 @@ The Vite development server is pre-configured with an automatic reverse proxy: a
 ### Step B: Investigate Incident in the 3-Panel Workspace
 1. In the Command Centre incident table, click **"Investigate"** on `INC-001` (or navigate to `http://localhost:5173/incidents/INC-001`).
 2. **Left Panel**: Inspect the chronological event sequence and extracted entities.
-3. **Center Panel**: Interact with the Adversary Attack Graph powered by `@xyflow/react`. Click on any node or edge to inspect relationships.
+3. **Center Panel**: Interact with the Adversary Attack Graph powered by `@xyflow/react` and `@dagrejs/dagre` deterministic hierarchical DAG layout. Click on any node or edge to inspect relationships in the Entity Inspector.
 4. **Right Panel**: Click **"Run AI Investigation"** to trigger BharatCode Qwen 27B (or Deterministic Fallback).
 5. Click any **`[evt_...]`** evidence citation to open the slide-over **Evidence Drawer** showing the exact normalized log entry and ingestion SHA-256 hash.
 6. Under **Recommended Actions**, test the **Human-in-the-Loop** approval workflow by clicking **"Approve Action"**.
@@ -126,13 +126,13 @@ The Vite development server is pre-configured with an automatic reverse proxy: a
 ## 6. How to Report Bugs & Submit Code
 
 1. **Before pushing**:
-   - Run backend tests: `PYTHONPATH=backend pytest backend/tests` (Ensure 74/74 pass).
+   - Run backend tests: `PYTHONPATH=backend pytest backend/tests` (Ensure 95/95 pass).
    - Run frontend build: `cd frontend && npm run build` (Ensure 0 TypeScript errors).
    - Check git whitespace: `git diff --check`.
 2. **Branch naming**:
    - `feat/feature-name` for new capabilities.
    - `fix/issue-description` for bug fixes.
 3. **Submitting changes**:
-   - Push to your branch and open a Pull Request targeting `feature/phase-4-soc-frontend` (or `main` when instructed).
+   - Push to your branch and open a Pull Request targeting `feature/phase-6.1-asset-identity-intelligence` (or `main` when instructed).
    - Use the Pull Request Template provided in `.github/PULL_REQUEST_TEMPLATE.md`.
 

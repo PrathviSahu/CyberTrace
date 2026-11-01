@@ -171,7 +171,7 @@ CyberTrace extracts an authoritative observed asset and identity inventory direc
 
 ## 9. Local Development & Testing Commands
 
-### Run Full Test Suite (94 Passing Tests)
+### Run Full Test Suite (95 Passing Tests)
 ```bash
 PYTHONPATH=backend backend/.venv/bin/pytest -c backend/pytest.ini backend/tests/ -v
 ```

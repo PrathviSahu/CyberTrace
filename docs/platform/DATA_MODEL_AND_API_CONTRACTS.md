@@ -229,6 +229,10 @@ class ApprovalRequestModel(Base):
 ### 3.5 Incidents & Investigation
 - `GET /api/v1/incidents`: Lists correlated incidents with filters for status, severity, time range.
 - `GET /api/v1/incidents/{incident_id}`: Returns incident dossier (metadata, detections, events, entities).
+- `PATCH /api/v1/incidents/{incident_id}/status`: Updates the lifecycle status of an incident.
+  - *Request Body:* `{"status": "open" | "investigating" | "contained" | "closed" | "false_positive"}`
+  - *Response:* Updated `IncidentResponse` with new status and updated timestamp.
+- `PATCH /api/v1/incidents/{incident_id}/triage`: Updates incident triage metadata (severity, analyst notes, tags).
 - `GET /api/v1/incidents/{incident_id}/graph`: Returns graph nodes and edges for React Flow visualization, with edges explicitly typed as `observed`, `correlated`, or `inferred`.
 - `POST /api/v1/incidents/{incident_id}/investigate`: Starts an AI or fallback investigation.
   - *Query Param:* `model_id` (optional: `qwen-3.8-27b`, `deepseek-v4.1-flash`, or `auto`).
