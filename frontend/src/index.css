@@ -4,9 +4,11 @@
 
 @layer base {
   body {
-    background-color: #080c14;
-    color: #f8fafc;
+    background-color: #111315;
+    color: #E9ECEF;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
   }
 }
 
@@ -16,34 +18,54 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #080c14;
+  background: #111315;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e2c47;
+  background: #24282C;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #06b6d4;
+  background: #30363C;
 }
 
-/* React Flow Dark SOC Custom Styles */
+/* React Flow Dark Canvas Styles */
 .react-flow__background {
-  background-color: #080c14 !important;
+  background-color: #111315 !important;
+}
+.react-flow__node {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.react-flow__node.selected {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.react-flow__handle {
+  background: #B58A61 !important;
+  border: 1.5px solid #111315 !important;
+  width: 7px !important;
+  height: 7px !important;
+  border-radius: 9999px !important;
+}
+.react-flow__edge-path {
+  stroke-linecap: round;
 }
 .react-flow__controls {
-  background: #0e1626 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 8px !important;
+  background: #1D2125 !important;
+  border: 1px solid #30363C !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4) !important;
 }
 .react-flow__controls-button {
-  background: #0e1626 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: #94a3b8 !important;
-  fill: #94a3b8 !important;
+  background: #1D2125 !important;
+  border-bottom: 1px solid #30363C !important;
+  color: #A0A7AE !important;
+  fill: #A0A7AE !important;
 }
 .react-flow__controls-button:hover {
-  background: #162035 !important;
-  color: #06b6d4 !important;
-  fill: #06b6d4 !important;
+  background: #24282C !important;
+  color: #B58A61 !important;
+  fill: #B58A61 !important;
 }
-

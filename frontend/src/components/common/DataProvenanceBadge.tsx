@@ -10,61 +10,46 @@ export const DataProvenanceBadge: React.FC<DataProvenanceBadgeProps> = ({
   provenance,
   size = "sm",
 }) => {
-  const isLive = provenance === "live_telemetry";
   const isEvaluation = provenance === "calculated_evaluation";
+  const isBenchmark =
+    provenance === "synthetic_benchmark" ||
+    provenance === "demo_benchmark" ||
+    provenance === "simulated_attack";
 
-  if (provenance === "observed_telemetry") {
-    return (
-      <span
-        title="Derived directly from observed security telemetry in database"
-        className={`inline-flex items-center gap-1.5 font-mono uppercase font-semibold text-sky-400 bg-sky-500/10 border border-sky-500/30 rounded px-2 py-0.5 ${
-          size === "sm" ? "text-[10px]" : "text-xs"
-        }`}
-      >
-        <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]" />
-        Observed Telemetry
-      </span>
-    );
-  }
-
-  if (isLive) {
-    return (
-      <span
-        title="Directly derived from live ingestion pipeline & SQLite database"
-        className={`inline-flex items-center gap-1.5 font-mono uppercase font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded px-2 py-0.5 ${
-          size === "sm" ? "text-[10px]" : "text-xs"
-        }`}
-      >
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
-        Live Telemetry
-      </span>
-    );
-  }
+  const sizeClass = size === "sm" ? "text-[11px] px-2 py-0.5" : "text-xs px-2.5 py-0.5";
 
   if (isEvaluation) {
     return (
       <span
         title="Formally calculated across benchmark scenarios"
-        className={`inline-flex items-center gap-1.5 font-mono uppercase font-semibold text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 rounded px-2 py-0.5 ${
-          size === "sm" ? "text-[10px]" : "text-xs"
-        }`}
+        className={`inline-flex items-center gap-1.5 font-sans font-medium text-[#6EA59A] bg-[#6EA59A]/10 border border-[#6EA59A]/25 rounded-md ${sizeClass}`}
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[#6EA59A] shrink-0" />
         Calculated Evaluation
       </span>
     );
   }
 
+  if (isBenchmark) {
+    return (
+      <span
+        title="Evaluated against standardized synthetic attack trajectories"
+        className={`inline-flex items-center gap-1.5 font-sans font-medium text-[#9B8FA8] bg-[#9B8FA8]/10 border border-[#9B8FA8]/25 rounded-md ${sizeClass}`}
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-[#9B8FA8] shrink-0" />
+        Synthetic Benchmark
+      </span>
+    );
+  }
+
+  // Default to Observed Telemetry (restrained warm bronze)
   return (
     <span
-      title="Verified synthetic benchmark scenario (Phase 1-3 dataset)"
-      className={`inline-flex items-center gap-1.5 font-mono uppercase font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/30 rounded px-2 py-0.5 ${
-        size === "sm" ? "text-[10px]" : "text-xs"
-      }`}
+      title="Derived directly from observed security telemetry in database"
+      className={`inline-flex items-center gap-1.5 font-sans font-medium text-[#B58A61] bg-[#B58A61]/10 border border-[#B58A61]/25 rounded-md ${sizeClass}`}
     >
-      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-      Demo Benchmark
+      <span className="w-1.5 h-1.5 rounded-full bg-[#B58A61] shrink-0" />
+      Observed Telemetry
     </span>
   );
 };
-
