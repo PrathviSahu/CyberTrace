@@ -1,31 +1,39 @@
-import React, { useState } from "react";
-import { Server, Search } from "lucide-react";
-import { DEMO_ASSETS } from "../services/demoData";
-import { AssetRecord } from "../types";
+import React, { useState, useEffect } from "react";
+import { Server, Search, Globe, RefreshCw } from "lucide-react";
+import { api } from "../services/api";
+import { AssetSummary } from "../types";
+import { DataProvenanceBadge } from "../components/common/DataProvenanceBadge";
 
 export const AssetInventory: React.FC = () => {
-  const [assets] = useState<AssetRecord[]>(DEMO_ASSETS);
+  const [assets, setAssets] = useState<AssetSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "hostname" | "ip">("all");
 
-  const filtered = assets.filter(
-    (a) =>
-      a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.ip_address.includes(search) ||
-      (a.owner && a.owner.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const getTierBadge = (tier: string) => {
-    switch (tier) {
-      case "tier_1":
-        return <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/30 text-[10px] font-bold">TIER 1 (MISSION CRITICAL)</span>;
-      case "tier_2":
-        return <span className="px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/30 text-[10px] font-bold">TIER 2 (BUSINESS CRITICAL)</span>;
-      case "tier_3":
-        return <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-bold">TIER 3 (INTERNAL)</span>;
-      default:
-        return <span className="px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 border border-slate-500/30 text-[10px] font-bold">TIER 4 (DEVELOPMENT)</span>;
+  const loadAssets = async () => {
+    setLoading(true);
+    try {
+      const data = await api.getAssets();
+      setAssets(data);
+    } catch (err) {
+      console.error("Failed to load assets:", err);
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadAssets();
+  }, []);
+
+  const filtered = assets.filter((a) => {
+    if (typeFilter !== "all" && a.asset_type !== typeFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return a.asset_value.toLowerCase().includes(q) || a.asset_type.toLowerCase().includes(q);
+    }
+    return true;
+  });
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -37,88 +45,134 @@ export const AssetInventory: React.FC = () => {
               MONITORED ASSET INVENTORY
             </h1>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-              ENVIRONMENT TELEMETRY
+              OBSERVED TELEMETRY
             </span>
           </div>
           <p className="text-xs text-slate-400 font-mono mt-0.5">
-            Enterprise infrastructure and identity workloads with automated risk-scoring and blast radius evaluation.
+            Enterprise hosts and IP entities derived directly from ingested security telemetry.
           </p>
         </div>
 
-        {/* Search */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-surface1 border border-border-subtle text-xs font-mono">
-          <Search className="w-3.5 h-3.5 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search hostname, IP, owner..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-transparent text-white placeholder-slate-500 outline-none w-60"
-          />
+        {/* Search & Filters */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-surface1 border border-border-subtle text-xs font-mono">
+            <Search className="w-3.5 h-3.5 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search hostname, IP..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="bg-transparent text-white placeholder-slate-500 outline-none w-48"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 bg-bg-surface1 p-1 rounded-lg border border-border-subtle text-xs font-mono">
+            {(["all", "hostname", "ip"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(t)}
+                className={`px-2 py-1 rounded uppercase transition-colors ${
+                  typeFilter === t
+                    ? "bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={loadAssets}
+            title="Refresh inventory"
+            className="p-2 rounded-lg bg-bg-surface1 border border-border-subtle text-slate-400 hover:text-white hover:border-cyan-500/40 transition-all"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-cyan-400" : ""}`} />
+          </button>
         </div>
       </div>
 
       {/* Asset Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map((ast) => (
-          <div
-            key={ast.id}
-            className="p-5 rounded-xl bg-bg-surface1 border border-border-subtle hover:border-cyan-500/40 transition-all shadow-card space-y-4"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-bg-surface2 border border-border-subtle text-cyan-400">
-                  <Server className="w-5 h-5" />
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-slate-400 font-mono text-xs">
+          <RefreshCw className="w-5 h-5 animate-spin mr-2 text-cyan-400" />
+          Loading observed asset inventory...
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="p-8 text-center rounded-xl bg-bg-surface1 border border-border-subtle text-slate-400 font-mono text-xs">
+          No observed assets match the current filter or search criteria.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((ast) => (
+            <div
+              key={`${ast.asset_type}:${ast.asset_value}`}
+              className="p-5 rounded-xl bg-bg-surface1 border border-border-subtle hover:border-cyan-500/40 transition-all shadow-card space-y-4"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-bg-surface2 border border-border-subtle text-cyan-400">
+                    {ast.asset_type === "hostname" ? (
+                      <Server className="w-5 h-5" />
+                    ) : (
+                      <Globe className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-base font-bold text-white truncate max-w-[180px]">
+                        {ast.asset_value}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-bg-surface2 text-slate-300 border border-border-subtle">
+                        {ast.asset_type}
+                      </span>
+                      <DataProvenanceBadge provenance={ast.provenance} size="sm" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Threat Status */}
+                <div className="text-right">
+                  <div className="text-[10px] font-mono uppercase text-slate-400">Incidents</div>
+                  <div
+                    className={`text-lg font-mono font-bold ${
+                      ast.incident_count > 0 ? "text-red-400" : "text-emerald-400"
+                    }`}
+                  >
+                    {ast.incident_count > 0 ? `${ast.incident_count} Active` : "0 Clean"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Observed Telemetry Metrics */}
+              <div className="grid grid-cols-3 gap-2 text-xs font-mono p-3 rounded-lg bg-bg-surface2/40 border border-border-subtle text-center">
+                <div>
+                  <span className="text-slate-400 text-[10px] uppercase">Events</span>
+                  <div className="text-white font-bold mt-0.5">{ast.event_count}</div>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-base font-bold text-white">{ast.name}</span>
-                    {getTierBadge(ast.criticality)}
-                  </div>
-                  <div className="text-xs font-mono text-slate-400 mt-1">
-                    {ast.ip_address} • {ast.type.replace("_", " ").toUpperCase()}
+                  <span className="text-slate-400 text-[10px] uppercase">Detections</span>
+                  <div
+                    className={`font-bold mt-0.5 ${
+                      ast.detection_count > 0 ? "text-amber-400" : "text-slate-300"
+                    }`}
+                  >
+                    {ast.detection_count}
                   </div>
                 </div>
-              </div>
-
-              {/* Risk Score Gauge */}
-              <div className="text-right">
-                <div className="text-[10px] font-mono uppercase text-slate-400">Risk Score</div>
-                <div
-                  className={`text-xl font-mono font-bold ${
-                    ast.risk_score > 70
-                      ? "text-red-400"
-                      : ast.risk_score > 40
-                      ? "text-amber-400"
-                      : "text-emerald-400"
-                  }`}
-                >
-                  {ast.risk_score} / 100
+                <div>
+                  <span className="text-slate-400 text-[10px] uppercase">Last Seen</span>
+                  <div className="text-slate-300 font-bold mt-0.5 text-[10px] truncate" title={ast.last_seen || ""}>
+                    {ast.last_seen ? new Date(ast.last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A"}
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono p-3 rounded-lg bg-bg-surface2/40 border border-border-subtle">
-              <div>
-                <span className="text-slate-400">Owner Team:</span>
-                <div className="text-slate-200 mt-0.5">{ast.owner || "Unassigned"}</div>
-              </div>
-              <div>
-                <span className="text-slate-400">Active Incidents:</span>
-                <div className="mt-0.5">
-                  {ast.active_incident_count > 0 ? (
-                    <span className="text-red-400 font-bold">
-                      {ast.active_incident_count} Linked Incident
-                    </span>
-                  ) : (
-                    <span className="text-emerald-400 font-bold">0 Clean</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

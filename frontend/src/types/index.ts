@@ -1,6 +1,6 @@
 export type Severity = "critical" | "high" | "medium" | "low" | "informational";
 export type IncidentStatus = "open" | "in_progress" | "contained" | "resolved" | "closed";
-export type DataProvenance = "live_telemetry" | "synthetic_benchmark" | "calculated_evaluation";
+export type DataProvenance = "live_telemetry" | "synthetic_benchmark" | "calculated_evaluation" | "observed_telemetry";
 
 export interface CommonEvent {
   id: string;
@@ -148,6 +148,25 @@ export interface OverviewMetrics {
   provenance: DataProvenance;
 }
 
+export interface AssetSummary {
+  asset_type: "hostname" | "ip";
+  asset_value: string;
+  first_seen?: string | null;
+  last_seen?: string | null;
+  event_count: number;
+  source_event_count?: number | null;
+  destination_event_count?: number | null;
+  detection_count: number;
+  incident_count: number;
+  provenance: DataProvenance;
+}
+
+export interface AssetListResponse {
+  assets: AssetSummary[];
+  total: number;
+  provenance: DataProvenance;
+}
+
 export interface AssetRecord {
   id: string;
   name: string;
@@ -158,6 +177,7 @@ export interface AssetRecord {
   last_seen: string;
   active_incident_count: number;
   risk_score: number;
+  provenance?: DataProvenance;
 }
 
 export interface ConfusionMatrix {

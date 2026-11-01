@@ -5,6 +5,17 @@ API endpoint integration tests for CyberTrace.
 from httpx import ASGITransport, AsyncClient
 import pytest
 from app.main import app
+from app.db.session import get_db_session
+
+
+@pytest.fixture(autouse=True)
+def override_db_session(db_session):
+    """Ensure all API integration tests use isolated in-memory DB."""
+    async def _override():
+        yield db_session
+    app.dependency_overrides[get_db_session] = _override
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio

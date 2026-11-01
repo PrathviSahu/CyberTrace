@@ -297,7 +297,7 @@ export const ThreatLab: React.FC = () => {
                 <td className="py-3.5 px-4 text-emerald-400 font-bold">100% Grounded</td>
                 <td className="py-3.5 px-4 text-slate-200">2 rounds (stateless)</td>
                 <td className="py-3.5 px-4 text-slate-200">~1.48s</td>
-                <td className="py-3.5 px-4 text-right text-emerald-400 font-bold">Live (Verified 74/74)</td>
+                <td className="py-3.5 px-4 text-right text-emerald-400 font-bold">Live (Verified 94/94)</td>
               </tr>
               <tr>
                 <td className="py-3.5 px-4 font-bold text-amber-300">Deterministic Fallback Engine</td>

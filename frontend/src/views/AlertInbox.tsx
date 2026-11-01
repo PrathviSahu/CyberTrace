@@ -1,24 +1,43 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
   Crosshair,
   ArrowRight,
+  RefreshCw,
 } from "lucide-react";
 import { Detection, CommonEvent } from "../types";
-import { DEMO_INCIDENT_DETAIL_INC001 } from "../services/demoData";
+import { api } from "../services/api";
 import { SeverityBadge } from "../components/common/SeverityBadge";
 import { EvidenceCitation } from "../components/common/EvidenceCitation";
 import { EvidenceDrawer } from "../components/common/EvidenceDrawer";
 
 export const AlertInbox: React.FC = () => {
   const navigate = useNavigate();
-  const [detections] = useState<Detection[]>(DEMO_INCIDENT_DETAIL_INC001.detections);
-  const [events] = useState<CommonEvent[]>(DEMO_INCIDENT_DETAIL_INC001.events);
+  const [detections, setDetections] = useState<Detection[]>([]);
+  const [events, setEvents] = useState<CommonEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<CommonEvent | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedSeverity, setSelectedSeverity] = useState<string>("all");
+
+  const loadAlerts = async () => {
+    setLoading(true);
+    try {
+      const [dets, evts] = await Promise.all([api.getDetections(), api.getEvents()]);
+      setDetections(dets);
+      setEvents(evts);
+    } catch (err) {
+      console.error("Failed to load alerts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAlerts();
+  }, []);
 
   const handleOpenCitation = (eid: string) => {
     const found = events.find((e) => e.id === eid);
@@ -88,66 +107,85 @@ export const AlertInbox: React.FC = () => {
               </button>
             ))}
           </div>
+
+          <button
+            onClick={loadAlerts}
+            title="Refresh alerts"
+            className="p-2 rounded-lg bg-bg-surface1 border border-border-subtle text-slate-400 hover:text-white hover:border-cyan-500/40 transition-all"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-cyan-400" : ""}`} />
+          </button>
         </div>
       </div>
 
       {/* Alert Stream Grid */}
       <div className="space-y-3">
-        {filtered.map((det) => (
-          <div
-            key={det.id}
-            className="p-4 rounded-xl bg-bg-surface1 border border-border-subtle hover:border-cyan-500/40 transition-all shadow-card space-y-3"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-bg-surface2 border border-border-subtle text-cyan-400">
-                  <Crosshair className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-cyan-400">{det.rule_id}</span>
-                    <span className="font-mono text-sm font-semibold text-white">{det.rule_name}</span>
-                    <SeverityBadge severity={det.severity} size="sm" />
-                  </div>
-                  <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400 mt-1">
-                    <span>Target: <strong className="text-white">{det.entity_value}</strong> ({det.entity_type})</span>
-                    <span>•</span>
-                    <span>Detected: {det.detected_at}</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => navigate("/incidents/INC-001")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-surface2 hover:bg-cyan-500 hover:text-black text-xs font-mono text-slate-300 transition-colors border border-border-subtle"
-              >
-                <span>View Incident</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <p className="text-xs font-mono text-slate-300 leading-relaxed bg-bg-surface2/40 p-3 rounded-lg border border-border-subtle">
-              {det.explanation}
-            </p>
-
-            <div className="flex items-center justify-between pt-1">
-              <div className="flex items-center gap-2">
-                {det.mitre_tactic && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
-                    MITRE: {det.mitre_tactic} ({det.mitre_technique})
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-mono text-slate-500">Triggering Event:</span>
-                {(det.triggering_event_ids || []).map((eid) => (
-                  <EvidenceCitation key={eid} eventId={eid} onClick={handleOpenCitation} />
-                ))}
-              </div>
-            </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-slate-400 font-mono text-xs">
+            <RefreshCw className="w-5 h-5 animate-spin mr-2 text-cyan-400" />
+            Loading detection stream...
           </div>
-        ))}
+        ) : filtered.length === 0 ? (
+          <div className="p-8 text-center rounded-xl bg-bg-surface1 border border-border-subtle text-slate-400 font-mono text-xs">
+            No detections match the current filter.
+          </div>
+        ) : (
+          filtered.map((det) => (
+            <div
+              key={det.id}
+              className="p-4 rounded-xl bg-bg-surface1 border border-border-subtle hover:border-cyan-500/40 transition-all shadow-card space-y-3"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-bg-surface2 border border-border-subtle text-cyan-400">
+                    <Crosshair className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-cyan-400">{det.rule_id}</span>
+                      <span className="font-mono text-sm font-semibold text-white">{det.rule_name}</span>
+                      <SeverityBadge severity={det.severity} size="sm" />
+                    </div>
+                    <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400 mt-1">
+                      <span>Target: <strong className="text-white">{det.entity_value}</strong> ({det.entity_type})</span>
+                      <span>•</span>
+                      <span>Detected: {det.detected_at ? new Date(det.detected_at).toISOString().replace("T", " ").slice(0, 19) : "—"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => navigate("/incidents")}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-surface2 hover:bg-cyan-500 hover:text-black text-xs font-mono text-slate-300 transition-colors border border-border-subtle"
+                >
+                  <span>View Incidents</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <p className="text-xs font-mono text-slate-300 leading-relaxed bg-bg-surface2/40 p-3 rounded-lg border border-border-subtle">
+                {det.explanation}
+              </p>
+
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center gap-2">
+                  {det.mitre_tactic && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
+                      MITRE: {det.mitre_tactic} ({det.mitre_technique})
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono text-slate-500">Triggering Event:</span>
+                  {(det.triggering_event_ids || []).map((eid) => (
+                    <EvidenceCitation key={eid} eventId={eid} onClick={handleOpenCitation} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <EvidenceDrawer

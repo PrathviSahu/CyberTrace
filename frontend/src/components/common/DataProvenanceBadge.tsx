@@ -13,6 +13,20 @@ export const DataProvenanceBadge: React.FC<DataProvenanceBadgeProps> = ({
   const isLive = provenance === "live_telemetry";
   const isEvaluation = provenance === "calculated_evaluation";
 
+  if (provenance === "observed_telemetry") {
+    return (
+      <span
+        title="Derived directly from observed security telemetry in database"
+        className={`inline-flex items-center gap-1.5 font-mono uppercase font-semibold text-sky-400 bg-sky-500/10 border border-sky-500/30 rounded px-2 py-0.5 ${
+          size === "sm" ? "text-[10px]" : "text-xs"
+        }`}
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]" />
+        Observed Telemetry
+      </span>
+    );
+  }
+
   if (isLive) {
     return (
       <span
