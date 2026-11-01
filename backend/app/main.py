@@ -23,6 +23,8 @@ from app.schemas.investigation import InvestigationResponse
 from app.investigation.service import InvestigationService
 from app.threatlab.models import ScenarioReplayResponse, ScenarioSummary
 from app.threatlab.service import ThreatLabService
+from app.db.repositories.asset_repo import AssetRepository, IdentityRepository
+from app.schemas.asset import AssetDetail, AssetListResponse, AssetSummary, IdentityDetail, IdentityListResponse, IdentitySummary
 
 
 @asynccontextmanager
@@ -452,4 +454,103 @@ async def replay_threatlab_scenario(scenario_id: str) -> ScenarioReplayResponse:
         return service.replay_scenario(scenario_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Phase 6.1 — Asset & Identity Inventory (read-only, telemetry-derived)
+# ---------------------------------------------------------------------------
+
+_VALID_ASSET_TYPES = {"hostname", "ip"}
+
+
+@app.get(f"{settings.API_V1_STR}/assets", response_model=AssetListResponse, tags=["Assets"])
+async def list_assets(
+    asset_type: Optional[str] = Query(None, description="Filter by asset type: hostname or ip"),
+    search: Optional[str] = Query(None, max_length=128, description="Substring search on asset value"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_db_session),
+) -> AssetListResponse:
+    """
+    List observed assets derived from ingested security telemetry.
+    Assets are hostnames and IP addresses seen in security events.
+    No fabricated data — returns an empty list when no events have been ingested.
+    """
+    if asset_type is not None and asset_type not in _VALID_ASSET_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid asset_type '{asset_type}'. Allowed values: hostname, ip",
+        )
+    repo = AssetRepository(session)
+    assets, total = await repo.list_assets(
+        asset_type=asset_type, search=search, limit=limit, offset=offset
+    )
+    return AssetListResponse(assets=[AssetSummary(**a) for a in assets], total=total)
+
+
+@app.get(f"{settings.API_V1_STR}/assets/{{asset_type}}/{{asset_value:path}}", response_model=AssetDetail, tags=["Assets"])
+async def get_asset(
+    asset_type: str,
+    asset_value: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> AssetDetail:
+    """
+    Return observed detail for a single asset.
+    asset_type must be 'hostname' or 'ip'.
+    asset_value is URL-decoded automatically by FastAPI.
+    Returns 404 when the asset has not been observed in any ingested event.
+    """
+    if asset_type not in _VALID_ASSET_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid asset_type '{asset_type}'. Allowed values: hostname, ip",
+        )
+    repo = AssetRepository(session)
+    if asset_type == "hostname":
+        detail = await repo.get_hostname_detail(asset_value)
+    else:
+        detail = await repo.get_ip_detail(asset_value)
+
+    if detail is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Asset {asset_type}/{asset_value!r} not found in observed telemetry",
+        )
+    return AssetDetail(**detail)
+
+
+@app.get(f"{settings.API_V1_STR}/identities", response_model=IdentityListResponse, tags=["Identities"])
+async def list_identities(
+    search: Optional[str] = Query(None, max_length=128, description="Substring search on username"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_db_session),
+) -> IdentityListResponse:
+    """
+    List observed user identities derived from ingested security telemetry.
+    No fabricated data — returns an empty list when no events have been ingested.
+    """
+    repo = IdentityRepository(session)
+    identities, total = await repo.list_identities(search=search, limit=limit, offset=offset)
+    return IdentityListResponse(identities=[IdentitySummary(**i) for i in identities], total=total)
+
+
+@app.get(f"{settings.API_V1_STR}/identities/{{username}}", response_model=IdentityDetail, tags=["Identities"])
+async def get_identity(
+    username: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> IdentityDetail:
+    """
+    Return observed detail for a single user identity.
+    username is URL-decoded automatically by FastAPI.
+    Returns 404 when the username has not been observed in any ingested event.
+    """
+    repo = IdentityRepository(session)
+    detail = await repo.get_identity_detail(username)
+    if detail is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Identity {username!r} not found in observed telemetry",
+        )
+    return IdentityDetail(**detail)
 
