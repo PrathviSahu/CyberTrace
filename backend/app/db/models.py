@@ -254,3 +254,95 @@ class SavedHuntModel(Base):
     run_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
 
+
+class DetectionRuleDraftModel(Base):
+    """
+    Detection Rule Draft representation (Phase 6.3B).
+    Promoted from SavedHunt or created from scratch.
+    Captures rule metadata, single-event AST logic, versioning,
+    and lifecycle status (DRAFT, VALIDATED, ARCHIVED).
+    """
+    __tablename__ = "detection_rule_drafts"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    severity: Mapped[str] = mapped_column(String(32), default="medium", nullable=False)
+    mitre_attack_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    mitre_tactic: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    source_hunt_id: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        ForeignKey("saved_hunts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    source_hunt_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    query_definition: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="DRAFT", nullable=False, index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    created_by: Mapped[str] = mapped_column(String(128), default="analyst_user", nullable=False)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    validation_runs: Mapped[List["RuleValidationRunModel"]] = sa_relationship(
+        "RuleValidationRunModel",
+        back_populates="draft",
+        cascade="all, delete-orphan",
+        order_by="desc(RuleValidationRunModel.run_at)",
+    )
+
+
+class RuleValidationRunModel(Base):
+    """
+    Immutable Pre-flight Validation Run record (Phase 6.3B).
+    Preserves exact historical results, telemetry coverage, ThreatLab benchmark scores,
+    and query snapshots for a specific draft version.
+    """
+    __tablename__ = "rule_validation_runs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    draft_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("detection_rule_drafts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    draft_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    run_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+    target_scope: Mapped[str] = mapped_column(String(64), default="all", nullable=False)
+    query_definition_snapshot: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    events_scanned: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    matches_found: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    estimated_daily_alert_volume: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    observation_duration_days: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    observation_start: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    observation_end: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    duration_ms: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    provenance_breakdown: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    threatlab_results: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    sample_matched_event_ids: Mapped[List[str]] = mapped_column(JSON, default=list, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="COMPLETED", nullable=False)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_stale: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    draft: Mapped["DetectionRuleDraftModel"] = sa_relationship(
+        "DetectionRuleDraftModel",
+        back_populates="validation_runs",
+    )
+

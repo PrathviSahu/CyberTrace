@@ -30,6 +30,10 @@ from app.db.repositories.saved_hunt_repo import (
     SavedHuntRepository,
     VersionConflictError,
 )
+from app.db.repositories.rule_draft_repo import (
+    ArchivedRuleError,
+    RuleDraftRepository,
+)
 from app.schemas.asset import AssetDetail, AssetListResponse, AssetSummary, IdentityDetail, IdentityListResponse, IdentitySummary
 from app.schemas.hunting import ThreatHuntQueryRequest, ThreatHuntQueryResponse
 from app.schemas.saved_hunt import (
@@ -40,6 +44,14 @@ from app.schemas.saved_hunt import (
     SavedHuntListResponse,
     SavedHuntResponse,
     SavedHuntUpdate,
+)
+from app.schemas.rule_draft import (
+    DetectionRuleDraftCreate,
+    DetectionRuleDraftListResponse,
+    DetectionRuleDraftResponse,
+    DetectionRuleDraftUpdate,
+    RuleValidationReportResponse,
+    RuleValidationRunRequest,
 )
 
 
@@ -388,6 +400,233 @@ async def duplicate_saved_hunt(
             detail=str(e),
         )
 
+
+# ===========================================================================
+# Section: Detection Rule Drafts & Pre-flight Validation (Phase 6.3B)
+# ===========================================================================
+
+@app.post(
+    f"{settings.API_V1_STR}/rules/drafts",
+    response_model=DetectionRuleDraftResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Detection Rules", "Rule Drafts"],
+    summary="Create a detection rule draft (scratch or from saved hunt)",
+    description=(
+        "Persists a new detection rule draft. Can be created from scratch with a query definition, "
+        "or promoted from an existing saved threat hunt (capturing an immutable snapshot of source_hunt_version)."
+    ),
+)
+async def create_rule_draft(
+    data: DetectionRuleDraftCreate,
+    session: AsyncSession = Depends(get_db_session),
+) -> DetectionRuleDraftResponse:
+    repo = RuleDraftRepository(session)
+    try:
+        draft = await repo.create_draft(data)
+        return DetectionRuleDraftResponse.model_validate(draft)
+    except ArchivedRuleError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@app.get(
+    f"{settings.API_V1_STR}/rules/drafts",
+    response_model=DetectionRuleDraftListResponse,
+    tags=["Detection Rules", "Rule Drafts"],
+    summary="List detection rule drafts",
+    description="Lists detection rule drafts with optional filtering by status and severity. Excludes archived drafts by default.",
+)
+async def list_rule_drafts(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    severity: Optional[str] = Query(None),
+    include_archived: bool = Query(False),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_db_session),
+) -> DetectionRuleDraftListResponse:
+    repo = RuleDraftRepository(session)
+    items, total = await repo.list_drafts(
+        status=status_filter,
+        severity=severity,
+        include_archived=include_archived,
+        limit=limit,
+        offset=offset,
+    )
+    result_items: List[DetectionRuleDraftResponse] = []
+    for item in items:
+        resp_item = DetectionRuleDraftResponse.model_validate(item)
+        resp_item.latest_validation = await repo.get_latest_validation_summary(item.id)
+        result_items.append(resp_item)
+
+    return DetectionRuleDraftListResponse(
+        items=result_items,
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.get(
+    f"{settings.API_V1_STR}/rules/drafts/{{draft_id}}",
+    response_model=DetectionRuleDraftResponse,
+    tags=["Detection Rules", "Rule Drafts"],
+    summary="Get a detection rule draft by ID",
+)
+async def get_rule_draft(
+    draft_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> DetectionRuleDraftResponse:
+    repo = RuleDraftRepository(session)
+    draft = await repo.get_draft(draft_id)
+    if not draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Detection rule draft '{draft_id}' was not found.",
+        )
+    resp = DetectionRuleDraftResponse.model_validate(draft)
+    resp.latest_validation = await repo.get_latest_validation_summary(draft.id)
+    return resp
+
+
+@app.put(
+    f"{settings.API_V1_STR}/rules/drafts/{{draft_id}}",
+    response_model=DetectionRuleDraftResponse,
+    tags=["Detection Rules", "Rule Drafts"],
+    summary="Update a detection rule draft",
+    description=(
+        "Updates a detection rule draft with optimistic version concurrency locking. "
+        "Returns 409 Conflict if stale. Note: modifying the query_definition AST automatically "
+        "resets status to DRAFT, invalidating prior validation."
+    ),
+)
+async def update_rule_draft(
+    draft_id: str,
+    data: DetectionRuleDraftUpdate,
+    session: AsyncSession = Depends(get_db_session),
+) -> DetectionRuleDraftResponse:
+    repo = RuleDraftRepository(session)
+    try:
+        updated = await repo.update_draft(draft_id, data)
+        resp = DetectionRuleDraftResponse.model_validate(updated)
+        resp.latest_validation = await repo.get_latest_validation_summary(updated.id)
+        return resp
+    except (VersionConflictError, ArchivedRuleError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@app.delete(
+    f"{settings.API_V1_STR}/rules/drafts/{{draft_id}}",
+    response_model=DetectionRuleDraftResponse,
+    tags=["Detection Rules", "Rule Drafts"],
+    summary="Archive a detection rule draft (soft delete)",
+)
+async def archive_rule_draft(
+    draft_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> DetectionRuleDraftResponse:
+    repo = RuleDraftRepository(session)
+    try:
+        archived = await repo.archive_draft(draft_id)
+        resp = DetectionRuleDraftResponse.model_validate(archived)
+        resp.latest_validation = await repo.get_latest_validation_summary(archived.id)
+        return resp
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+
+@app.post(
+    f"{settings.API_V1_STR}/rules/drafts/{{draft_id}}/validate",
+    response_model=RuleValidationReportResponse,
+    tags=["Detection Rules", "Pre-flight Validation"],
+    summary="Run pre-flight validation on a detection rule draft",
+    description=(
+        "Executes pre-flight simulation across historical database telemetry and ThreatLab benchmark scenarios. "
+        "Evaluates daily alert volume, benign baseline false alarm risk, and provenance breakdown. "
+        "Transitions draft status to VALIDATED if draft version matches; preserves result as historical evidence."
+    ),
+)
+async def validate_rule_draft(
+    draft_id: str,
+    request: Optional[RuleValidationRunRequest] = None,
+    session: AsyncSession = Depends(get_db_session),
+) -> RuleValidationReportResponse:
+    repo = RuleDraftRepository(session)
+    try:
+        return await repo.validate_draft(draft_id, request)
+    except ArchivedRuleError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@app.get(
+    f"{settings.API_V1_STR}/rules/drafts/{{draft_id}}/validations",
+    tags=["Detection Rules", "Pre-flight Validation"],
+    summary="List validation run history for a detection rule draft",
+)
+async def list_rule_draft_validations(
+    draft_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_db_session),
+) -> Dict[str, Any]:
+    repo = RuleDraftRepository(session)
+    draft = await repo.get_draft(draft_id)
+    if not draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Detection rule draft '{draft_id}' was not found.",
+        )
+    runs, total = await repo.list_validations(draft_id, limit=limit, offset=offset)
+    return {
+        "items": [
+            {
+                "id": r.id,
+                "draft_id": r.draft_id,
+                "draft_version": r.draft_version,
+                "run_at": r.run_at.isoformat(),
+                "target_scope": r.target_scope,
+                "events_scanned": r.events_scanned,
+                "matches_found": r.matches_found,
+                "estimated_daily_alert_volume": r.estimated_daily_alert_volume,
+                "observation_duration_days": r.observation_duration_days,
+                "observation_start": r.observation_start.isoformat() if r.observation_start else None,
+                "observation_end": r.observation_end.isoformat() if r.observation_end else None,
+                "duration_ms": r.duration_ms,
+                "provenance_breakdown": r.provenance_breakdown,
+                "threatlab_results": r.threatlab_results,
+                "sample_matched_event_ids": r.sample_matched_event_ids,
+                "status": r.status,
+                "error_message": r.error_message,
+                "is_stale": r.is_stale,
+            }
+            for r in runs
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @app.get(f"{settings.API_V1_STR}/detections", tags=["Detections"])

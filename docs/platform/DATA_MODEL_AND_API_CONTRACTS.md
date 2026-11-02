@@ -454,3 +454,151 @@ class ApprovalRequestModel(Base):
   - *Archived Hunt Forking:* Duplicating an archived hunt is explicitly supported as a defensive workflow: it forks the query baseline into a new active hunt (`version = 1`, `run_count = 0`, `last_run_at = null`, `is_archived = false`) while preserving the original archived record untouched. Name defaults to `"Copy of {original.name}"` (truncated to 128 chars). Mutating either hunt does not affect the other.
 
 
+### 8. Detection Rule Drafts & Pre-flight Validation (Phase 6.3B)
+
+Detection Rule Drafts allow security engineers to formalize exploratory threat hunting queries into candidate detection rules, evaluate their sensitivity against ThreatLab benchmark scenarios, and estimate daily alert volume against historical telemetry before activation (Phase 6.3C).
+
+#### Database Entities (`detection_rule_drafts` & `rule_validation_runs`)
+- **`detection_rule_drafts`**:
+  - `id` (VARCHAR(64), PK): Unique draft identifier (`draft_...`).
+  - `name` (VARCHAR(128), NOT NULL, indexed): Rule title.
+  - `description` (TEXT): Rationale and detection objective.
+  - `severity` (VARCHAR(32), NOT NULL): Target alert severity (`low`, `medium`, `high`, `critical`).
+  - `mitre_attack_id` (VARCHAR(64)): MITRE ATT&CK technique (e.g. `T1110.001`, `T1041`).
+  - `mitre_tactic` (VARCHAR(64)): MITRE tactic (e.g. `credential_access`, `exfiltration`).
+  - `source_hunt_id` (VARCHAR(64), FK $\to$ `saved_hunts.id`, nullable, ondelete SET NULL).
+  - `source_hunt_version` (INTEGER): Immutable snapshot of the saved hunt version at promotion time.
+  - `query_definition` (JSON, NOT NULL): Validated single-event `SavedHuntQueryDefinition` containing `filter_group`.
+  - `status` (VARCHAR(32), NOT NULL, indexed): State in `DRAFT`, `VALIDATED`, or `ARCHIVED`.
+  - `version` (INTEGER, NOT NULL, default 1): Optimistic concurrency locking token.
+  - `created_by` (VARCHAR(128), NOT NULL): Caller-supplied demo analyst identity.
+  - `is_archived` (BOOLEAN, NOT NULL, default false): Soft-delete flag.
+  - `created_at` & `updated_at` (TIMESTAMP WITH TIME ZONE, NOT NULL).
+
+- **`rule_validation_runs`** (Immutable validation history):
+  - `id` (VARCHAR(64), PK): Unique run identifier (`val_...`).
+  - `draft_id` (VARCHAR(64), FK $\to$ `detection_rule_drafts.id`, ondelete CASCADE, indexed).
+  - `draft_version` (INTEGER, NOT NULL): Version of the draft evaluated.
+  - `run_at` (TIMESTAMP WITH TIME ZONE, NOT NULL, indexed).
+  - `target_scope` (VARCHAR(64), NOT NULL): Scope of simulation (`historical_telemetry`, `threatlab_benchmarks`, `all`).
+  - `query_definition_snapshot` (JSON, NOT NULL): Exact AST evaluated.
+  - `events_scanned` (INTEGER, NOT NULL): Total telemetry events scanned.
+  - `matches_found` (INTEGER, NOT NULL): Total matching events found.
+  - `estimated_daily_alert_volume` (FLOAT, NOT NULL): Extrapolated alerts per day.
+  - `observation_duration_days` (FLOAT, NOT NULL): Duration in days between oldest and newest event.
+  - `observation_start` & `observation_end` (TIMESTAMP WITH TIME ZONE, nullable).
+  - `duration_ms` (FLOAT, NOT NULL): Simulation run execution time.
+  - `provenance_breakdown` (JSON, NOT NULL): Distribution across `observed_telemetry`, `synthetic_benchmark`, and `unknown`.
+  - `threatlab_results` (JSON, nullable): Scenario-level replay breakdown with ground-truth classifications.
+  - `sample_matched_event_ids` (JSON, NOT NULL): Top 10 sample event IDs for evidence verification.
+  - `status` (VARCHAR(32), NOT NULL): Execution status (`COMPLETED`, `FAILED`).
+  - `error_message` (TEXT, nullable).
+  - `is_stale` (BOOLEAN, NOT NULL, default false): True if the draft was concurrently updated to a newer version during simulation.
+
+#### API Endpoints (`/api/v1/rules/drafts`)
+
+- **`POST /api/v1/rules/drafts`** (Status: `201 Created`):
+  - *Purpose:* Creates a new draft from scratch or promotes an existing saved threat hunt.
+  - *Promotion Guards:* If `source_hunt_id` is supplied, validates that the source hunt exists and is active. Rejects archived hunts with `HTTP 409 Conflict`. Permanently snapshots `source_hunt_version`.
+  - *Request Body (`DetectionRuleDraftCreate`):*
+    ```json
+    {
+      "source_hunt_id": "hunt_98a7bc12e4f0",
+      "name": "High Outbound Egress Detection Rule",
+      "description": "Flags high-volume network egress indicative of exfiltration",
+      "severity": "high",
+      "mitre_attack_id": "T1041",
+      "mitre_tactic": "exfiltration",
+      "created_by": "analyst_alice"
+    }
+    ```
+
+- **`GET /api/v1/rules/drafts`**:
+  - *Purpose:* Paginated listing of detection rule drafts.
+  - *Filters:* `status` (e.g. `DRAFT`, `VALIDATED`), `severity`, and `include_archived` (default `false`).
+  - *Hydration:* Dynamically populates `latest_validation` summary for each returned draft.
+
+- **`GET /api/v1/rules/drafts/{draft_id}`**:
+  - *Purpose:* Direct lookup of a detection rule draft by ID.
+
+- **`PUT /api/v1/rules/drafts/{draft_id}`**:
+  - *Purpose:* Updates draft metadata or AST query definition.
+  - *Optimistic Concurrency:* Requires `version: <int>`. Executed via atomic conditional SQL update. Returns `HTTP 409 Conflict` on version mismatch or if archived.
+  - *Stale Validation Invalidation:* If the request updates `query_definition`, the repository automatically resets `status = DRAFT`, preventing stale validation guarantees.
+
+- **`DELETE /api/v1/rules/drafts/{draft_id}`**:
+  - *Purpose:* Soft-delete archival (`is_archived = true`, `status = ARCHIVED`). Idempotent.
+
+- **`POST /api/v1/rules/drafts/{draft_id}/validate`**:
+  - *Purpose:* Runs dual-scope pre-flight simulation (Historical database telemetry + ThreatLab benchmark scenarios).
+  - *Lifecycle & Concurrency Guards:*
+    - Rejects archived drafts with `HTTP 409 Conflict`.
+    - Captures an immutable snapshot of `draft.version` and `query_definition` upfront.
+    - Transitions draft status to `VALIDATED` using an atomic conditional update (`WHERE id = draft_id AND version = validated_version AND is_archived = false`).
+    - If a concurrent edit incremented the draft version during validation, the validation result is saved as historical evidence, `is_stale = true`, and the newer draft version remains in `DRAFT`.
+  - *Response Body (`RuleValidationReportResponse`):*
+    ```json
+    {
+      "validation_id": "val_1a2b3c4d5e6f",
+      "draft_id": "draft_77a88b99c0d1",
+      "draft_version": 1,
+      "run_at": "2026-11-02T20:30:00Z",
+      "target_scope": "all",
+      "duration_ms": 14.8,
+      "status": "COMPLETED",
+      "is_stale": false,
+      "draft_status_updated": true,
+      "historical_metrics": {
+        "events_scanned": 1500,
+        "matches_found": 3,
+        "observation_start": "2026-11-01T00:00:00Z",
+        "observation_end": "2026-11-02T12:00:00Z",
+        "observation_duration_days": 1.5,
+        "estimated_daily_alert_volume": 2.0,
+        "daily_volume_formula": "3 matches / 1.50 observation days = 2.00 alerts/day.",
+        "insufficient_history_warning": false,
+        "provenance_breakdown": {
+          "observed_telemetry": 2,
+          "synthetic_benchmark": 1,
+          "unknown": 0
+        },
+        "sample_matched_event_ids": ["evt_001", "evt_002", "evt_003"]
+      },
+      "threatlab_metrics": {
+        "scenarios_evaluated": 4,
+        "total_benchmark_events": 40,
+        "total_matches": 1,
+        "benign_baseline_matches": 0,
+        "has_benign_baseline_warning": false,
+        "scenario_results": [
+          {
+            "scenario_id": "SCN-001",
+            "name": "Multi-Stage Credential Stuffing & Exfiltration",
+            "category": "multi_stage_attack",
+            "total_events": 9,
+            "matches_found": 1,
+            "classification": "true_positive",
+            "is_benign_baseline_warning": false,
+            "matched_event_ids": ["scn1_evt_009"]
+          },
+          {
+            "scenario_id": "SCN-004",
+            "name": "Benign Administrative Baseline",
+            "category": "benign_baseline",
+            "total_events": 20,
+            "matches_found": 0,
+            "classification": "true_negative",
+            "is_benign_baseline_warning": false,
+            "matched_event_ids": []
+          }
+        ]
+      },
+      "provenance_disclaimer": "Synthetic benchmark matches are evaluated separately and not counted as production alerts."
+    }
+    ```
+
+- **`GET /api/v1/rules/drafts/{draft_id}/validations`**:
+  - *Purpose:* Retrieves immutable audit history of all validation runs for a draft, ordered newest first.
+
+
+

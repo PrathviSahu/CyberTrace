@@ -12,6 +12,10 @@ from .saved_hunt_repo import (
     SavedHuntRepository,
     VersionConflictError,
 )
+from .rule_draft_repo import (
+    ArchivedRuleError,
+    RuleDraftRepository,
+)
 
 __all__ = [
     "EventRepository",
@@ -20,8 +24,10 @@ __all__ = [
     "InvestigationRepository",
     "HuntingRepository",
     "SavedHuntRepository",
+    "RuleDraftRepository",
     "VersionConflictError",
     "ArchivedHuntError",
+    "ArchivedRuleError",
     "classify_event_provenance",
     "determine_response_provenance",
 ]

@@ -177,7 +177,7 @@ cp backend/.env.example backend/.env
 # 3. Run database migrations
 cd backend && alembic upgrade head && cd ..
 
-# 4. Execute backend test suite (166 passing tests)
+# 4. Execute backend test suite (186 passing tests)
 PYTHONPATH=backend pytest backend/tests -v
 
 # 5. Start FastAPI development server
@@ -218,6 +218,13 @@ npm run dev
 | `DELETE` | `/api/v1/hunting/saved/{id}` | Soft-deletes/archives a saved threat hunt. |
 | `POST` | `/api/v1/hunting/saved/{id}/execute` | Re-executes a saved threat hunt via the unified compiler and updates execution metrics. |
 | `POST` | `/api/v1/hunting/saved/{id}/duplicate` | Duplicates a saved threat hunt into an independent version 1 record. |
+| `POST` | `/api/v1/rules/drafts` | Creates a detection rule draft (from scratch or promoted from saved hunt) with AST validation (Phase 6.3B). |
+| `GET` | `/api/v1/rules/drafts` | Lists detection rule drafts with status/severity filtering, pagination, and latest validation summaries. |
+| `GET` | `/api/v1/rules/drafts/{id}` | Retrieves a detection rule draft with latest validation summary. |
+| `PUT` | `/api/v1/rules/drafts/{id}` | Updates draft with optimistic locking (resets `status = DRAFT` if query AST changed). |
+| `DELETE` | `/api/v1/rules/drafts/{id}` | Soft-deletes/archives a detection rule draft. |
+| `POST` | `/api/v1/rules/drafts/{id}/validate` | Runs dual-scope pre-flight simulation (Historical DB + ThreatLab benchmarks), updates status to `VALIDATED` if version-safe. |
+| `GET` | `/api/v1/rules/drafts/{id}/validations` | Lists immutable validation run history for a detection rule draft. |
 | `GET` | `/api/v1/detections` | Detections fired by deterministic rule engine. |
 | `GET` | `/api/v1/incidents` | List of correlated security incidents with entity summaries. |
 | `GET` | `/api/v1/incidents/{id}` | Complete incident dossier with detections, events, and graph links. |
@@ -249,13 +256,13 @@ CyberTrace/
 │   ├── app/
 │   │   ├── core/                      # Configuration and settings
 │   │   ├── correlation/               # Graph incident correlation engine & safeguards
-│   │   ├── db/                        # SQLAlchemy async SQLite models & repositories (HuntingRepository)
+│   │   ├── db/                        # SQLAlchemy async SQLite models & repositories (Hunting, SavedHunts, RuleDrafts)
 │   │   ├── investigation/             # BharatCode AI agent, verifier, tools, & fallback
 │   │   ├── parsers/                   # Multi-source log parsers (Linux, Windows, Zeek)
-│   │   ├── rules/                     # Deterministic detection engine (DET-001 to DET-004)
-│   │   ├── schemas/                   # Pydantic schemas (CES, Detection, Incident, Hunting AST, Saved Hunts)
+│   │   ├── rules/                     # Deterministic detection engine (DET-001 to DET-004) & in-memory AST evaluator
+│   │   ├── schemas/                   # Pydantic schemas (CES, Detection, Incident, Hunting AST, Saved Hunts, Rule Drafts)
 │   │   └── threatlab/                 # ThreatLab benchmark engine & scenario catalog
-│   └── tests/                         # 166 automated pytest integration & unit tests
+│   └── tests/                         # 186 automated pytest integration & unit tests
 ├── docs/
 │   ├── PROVENANCE_INTEGRITY_AUDIT.md  # Grounded telemetry vs. checksum integrity audit
 │   ├── TEAMMATE_QUICKSTART.md         # Step-by-step local developer onboarding guide
