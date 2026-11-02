@@ -176,23 +176,64 @@ async def _run_lifecycle(client: httpx.AsyncClient):
     # Step 6: Verify Detection Engine Output & Incident Lineage
     # -------------------------------------------------------------------------
     print("\n[Step 6] Verifying Detection Engine Output & Correlated Incidents...")
+
+    # 1. Direct Detection Query: GET /api/v1/detections?rule_id={rule_code}
+    res_det = await client.get(f"/api/v1/detections?rule_id={rule_code}")
+    if res_det.status_code != 200:
+        print(f"[FATAL] Failed to query detections endpoint: HTTP {res_det.status_code} - {res_det.text}")
+        sys.exit(1)
+
+    detections = res_det.json()
+    if not isinstance(detections, list) or len(detections) == 0:
+        print(f"[FATAL] Custom detection rule '{rule_code}' failed to trigger on matching synthetic telemetry!")
+        print("  -> Expected at least 1 detection record in database.")
+        sys.exit(1)
+
+    matched_det = detections[0]
+    if matched_det.get("rule_id") != rule_code:
+        print(f"[FATAL] Detection record rule_id mismatch: expected '{rule_code}', got '{matched_det.get('rule_id')}'")
+        sys.exit(1)
+
+    print(f"  -> Generated Detection ID:   {matched_det['id']}")
+    print(f"  -> Matched Rule Code:        {matched_det['rule_id']} ({matched_det['rule_name']})")
+    print(f"  -> Entity Attribution:       {matched_det.get('entity_type')}={matched_det.get('entity_value')}")
+    print(f"  -> Explanation:              {matched_det.get('explanation')}")
+
+    # 2. Incident Correlation & Evidence Dossier Query
     res_inc = await client.get("/api/v1/incidents")
     if res_inc.status_code != 200:
         print(f"[FATAL] Failed to list incidents: HTTP {res_inc.status_code} - {res_inc.text}")
         sys.exit(1)
 
     incidents = res_inc.json()
-    assert isinstance(incidents, list), f"Expected list of incidents, got {type(incidents)}"
+    if not isinstance(incidents, list) or len(incidents) == 0:
+        print(f"[FATAL] Detection engine generated detections, but correlation failed to produce an incident ticket!")
+        sys.exit(1)
 
-    matched = [i for i in incidents if any(rule_code in r for r in i.get("matched_rules", []))]
-    if matched:
-        inc = matched[0]
-        print(f"  -> Correlated Incident ID:   {inc['id']}")
-        print(f"  -> Incident Title:           {inc['title']}")
-        print(f"  -> Matched Rules:            {inc['matched_rules']}")
-        print(f"  -> Primary Entity:           {inc.get('primary_entity')}")
-    else:
-        print(f"  -> [INFO] Incidents found: {len(incidents)} (Rule {rule_code} evaluated)")
+    # Inspect incident evidence dossiers to confirm rule lineage
+    correlated_incident = None
+    for inc in incidents:
+        inc_id = inc["id"]
+        res_dossier = await client.get(f"/api/v1/incidents/{inc_id}")
+        if res_dossier.status_code == 200:
+            dossier = res_dossier.json()
+            dossier_dets = dossier.get("detections", [])
+            if any(d.get("rule_id") == rule_code for d in dossier_dets):
+                correlated_incident = (inc, dossier)
+                break
+
+    if not correlated_incident:
+        print(f"[FATAL] Custom rule '{rule_code}' was not correlated into any incident evidence dossier!")
+        print(f"  -> Evaluated {len(incidents)} incidents, none contained detection '{rule_code}' in evidence.")
+        sys.exit(1)
+
+    inc, dossier = correlated_incident
+    print(f"  -> Correlated Incident ID:   {inc['id']}")
+    print(f"  -> Incident Title:           {inc['title']}")
+    print(f"  -> Incident Severity:        {inc['severity']} (Status: {inc['status']})")
+    print(f"  -> Dossier Evidence Link:    Rule {rule_code} verified in incident detections")
+    print(f"  -> Correlated Events:        {len(dossier.get('events', []))} events")
+    print(f"  -> Associated Entities:      {len(dossier.get('entities', []))} entities")
 
     # -------------------------------------------------------------------------
     # Step 7: Deactivate Rule (DISABLED) with Optimistic Concurrency Control
