@@ -38,6 +38,7 @@ CyberTrace is engineered as a **functional defensive cybersecurity system**, not
 - **Phase 4 & 4.1 (Implemented & Verified):** Refined Warm Graphite & Bronze SOC Command Centre interface (`#111315`, `#1D2125`, `#B58A61`, Inter + JetBrains Mono), three-panel Incident Workspace, interactive Attack Graph powered by Dagre hierarchical layout (`@dagrejs/dagre`), and responsive tablet layout preventing clipped tables below 1280px.
 - **Phase 5 (Implemented & Verified):** CyberTrace ThreatLab replay studio, synthetic attack scenario suite, dynamic confusion matrix ($TP, FP, FN, TN$), mathematical Precision/Recall/$F_1$-score calculation, and BharatCode multi-model routing.
 - **Phase 6.1 (Implemented & Verified, 95/95 Backend Tests Passing):** Live Asset and Identity Intelligence engine. Dynamically aggregates observed endpoints and identities from stored telemetry with canonical case normalization (`UPPER(TRIM(hostname))`, `LOWER(TRIM(username))`), global database pagination, entity namespace isolation, and REST APIs (`GET /api/v1/assets`, `GET /api/v1/identities`).
+- **Phase 6.2 (Implemented & Verified, 144/144 Backend Tests, 20/20 Frontend Tests Passing):** Structured Threat Hunting Query Studio & Parameterized AST Query Engine. Parameterized multi-predicate search (`POST /api/v1/hunting/query`), allowlisted field/operator typing, nested boolean groups (`AND`/`OR`), bounded AST depth, constant $O(1)$ batched hydration of related detections and incidents, responsive SOC UI, and strict multi-tier provenance architecture distinguishing cryptographic checksums (SHA-256) from source authenticity.
 
 ---
 
@@ -160,6 +161,7 @@ CyberTrace is engineered as a **functional defensive cybersecurity system**, not
 | **Phase 4** | Warm Graphite SOC UI & Workspace | Responsive React/Vite dashboard; 3-panel incident workspace; Dagre attack graph; unclipped tablet layout. | **Completed & Verified** |
 | **Phase 5** | ThreatLab & Benchmarks | Replay harness executes; mathematically exact precision/recall/F1 calculated from benchmark scenarios. | **Completed & Verified** |
 | **Phase 6.1** | Asset & Identity Intelligence | 95/95 backend tests passing; canonical normalization; `/api/v1/assets` and `/api/v1/identities` live. | **Completed & Verified** |
-| **Phase 6.2** | Threat Hunting Studio | Search builder executes safe queries; saved searches functional. | In Progress |
+| **Phase 6.2** | Threat Hunting Studio & Safe Query Engine | 144/144 backend tests; 20/20 frontend tests; parameterized AST query engine; batched hydration; strict provenance integrity. | **Completed & Verified** |
+| **Phase 6.3** | Saved Hunts & Proactive Detections | Bookmark high-fidelity hunts; schedule recurring queries; promote hunt predicates to custom detection rules. | Planned |
 | **Phase 7** | Cases & Playbooks | Case creation, note saving, and simulated playbook approval workflows functional. | Planned |
 | **Phase 8** | Production Polish & OCSF | Full regression test suite passing; OCSF adapter validated; clean demo deployment ready. | Planned |

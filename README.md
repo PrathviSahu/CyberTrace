@@ -74,7 +74,7 @@ To maintain operational integrity and transparency, CyberTrace explicitly distin
 | **Dagre Attack Graph Workspace** | **Live** | Full-breadth console, `@dagrejs/dagre` hierarchical layout, dark surfaces (no white borders), clickable evidence citations, entity inspector. |
 | **ThreatLab Benchmark Harness** | **Live** | In-memory scenario replay, $TP/FP/FN/TN$ confusion matrix computation. |
 | **Asset & Identity Intelligence** | **Live** | Live inventory derived from telemetry (`/api/v1/assets`, `/api/v1/assets/{type}/{value}`); canonical case grouping; observed IP addresses; user identities. |
-| **Threat Hunting Query Studio** | **UI Live / API Phase 6.2** | Structured buffer filter UI and CES explorer; safe parameterized query engine scheduled for Phase 6.2. |
+| **Threat Hunting Query Studio** | **Live (Phase 6.2)** | Parameterized multi-predicate AST query engine (`POST /api/v1/hunting/query`), allowlisted field/operator typing, server-side sorting, pagination, and truthful provenance auditing. |
 | **Multi-Model Routing & Comparison** | **Blueprint (Phase 5.2)** | Single-model live execution (Qwen 27B); multi-model routing specified in Phase 5.2. |
 | **Case Management & Playbooks** | **Blueprint (Phase 7)** | Analyst approval gating specified in Phase 7 roadmap. |
 
@@ -177,7 +177,7 @@ cp backend/.env.example backend/.env
 # 3. Run database migrations
 cd backend && alembic upgrade head && cd ..
 
-# 4. Execute backend test suite (95 passing tests)
+# 4. Execute backend test suite (144 passing tests)
 PYTHONPATH=backend pytest backend/tests -v
 
 # 5. Start FastAPI development server
@@ -190,10 +190,13 @@ cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 cd frontend
 npm install
 
-# 2. Build for production & verify types
+# 2. Execute frontend unit & component tests (20 passing tests)
+npm test
+
+# 3. Build for production & verify types
 npm run build
 
-# 3. Launch Vite development server
+# 4. Launch Vite development server
 npm run dev
 # SOC Command Centre runs at http://localhost:5173
 ```
@@ -207,6 +210,7 @@ npm run dev
 | `GET` | `/api/v1/health` | Service health status and version metadata (`{"status": "healthy"}`). |
 | `POST` | `/api/v1/logs/upload` | Ingests multi-source log file, normalizes to CES, and correlates. |
 | `GET` | `/api/v1/events` | Paginated list of normalized CES security events. |
+| `POST` | `/api/v1/hunting/query` | Parameterized structured threat hunt query with AST boolean groups, allowlisted typing, and batched correlation hydration. |
 | `GET` | `/api/v1/detections` | Detections fired by deterministic rule engine. |
 | `GET` | `/api/v1/incidents` | List of correlated security incidents with entity summaries. |
 | `GET` | `/api/v1/incidents/{id}` | Complete incident dossier with detections, events, and graph links. |
@@ -238,14 +242,15 @@ CyberTrace/
 │   ├── app/
 │   │   ├── core/                      # Configuration and settings
 │   │   ├── correlation/               # Graph incident correlation engine & safeguards
-│   │   ├── db/                        # SQLAlchemy async SQLite models & repositories
+│   │   ├── db/                        # SQLAlchemy async SQLite models & repositories (HuntingRepository)
 │   │   ├── investigation/             # BharatCode AI agent, verifier, tools, & fallback
 │   │   ├── parsers/                   # Multi-source log parsers (Linux, Windows, Zeek)
 │   │   ├── rules/                     # Deterministic detection engine (DET-001 to DET-004)
-│   │   ├── schemas/                   # Pydantic schemas (CES, Detection, Incident)
+│   │   ├── schemas/                   # Pydantic schemas (CES, Detection, Incident, Hunting AST)
 │   │   └── threatlab/                 # ThreatLab benchmark engine & scenario catalog
-│   └── tests/                         # 95 automated pytest integration & unit tests
+│   └── tests/                         # 144 automated pytest integration & unit tests
 ├── docs/
+│   ├── PROVENANCE_INTEGRITY_AUDIT.md  # Grounded telemetry vs. checksum integrity audit
 │   ├── TEAMMATE_QUICKSTART.md         # Step-by-step local developer onboarding guide
 │   └── platform/                      # Platform Architecture & Specification Blueprint
 │       ├── PRODUCT_REQUIREMENTS.md
@@ -254,13 +259,13 @@ CyberTrace/
 │       ├── UI_DESIGN_SYSTEM.md
 │       ├── IMPLEMENTATION_ROADMAP.md
 │       └── SECURITY_AND_THREAT_MODEL.md
-└── frontend/                          # Vite + React 18 + TypeScript SOC Platform
-    ├── src/
-    │   ├── components/                # Reusable UI components (Badges, Drawer, Palette)
-    │   ├── services/                  # API client with hybrid failover & demo benchmark
-    │   ├── types/                     # TypeScript interface contracts
-    │   └── views/                     # Command Centre, Workspace, ThreatLab, Rules, etc.
-    └── tailwind.config.js             # Warm Graphite & Bronze executive design tokens
+├── frontend/                          # Vite + React 18 + TypeScript SOC Platform
+│   ├── src/
+│   │   ├── components/                # Reusable UI components (Badges, Drawer, Palette)
+│   │   ├── services/                  # API client with hybrid failover & demo benchmark
+│   │   ├── types/                     # TypeScript interface contracts (FilterAST, Provenance)
+│   │   └── views/                     # Command Centre, Workspace, ThreatHunting, ThreatLab
+│   └── tailwind.config.js             # Warm Graphite & Bronze executive design tokens
 ```
 
 ---

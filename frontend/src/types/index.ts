@@ -1,6 +1,21 @@
 export type Severity = "critical" | "high" | "medium" | "low" | "informational";
 export type IncidentStatus = "open" | "in_progress" | "contained" | "resolved" | "closed";
-export type DataProvenance = "live_telemetry" | "synthetic_benchmark" | "calculated_evaluation" | "observed_telemetry";
+export type DataProvenance = "live_telemetry" | "synthetic_benchmark" | "calculated_evaluation" | "observed_telemetry" | "unknown" | "mixed";
+
+export interface RelatedDetectionSummary {
+  id: string;
+  rule_id: string;
+  rule_name: string;
+  severity: Severity;
+  explanation: string;
+}
+
+export interface RelatedIncidentSummary {
+  id: string;
+  title: string;
+  severity: Severity;
+  status: IncidentStatus;
+}
 
 export interface CommonEvent {
   id: string;
@@ -16,9 +31,80 @@ export interface CommonEvent {
   destination_port?: number;
   hostname?: string;
   bytes_out?: number;
+  bytes_in?: number;
+  protocol?: string;
   process_name?: string;
   process_command_line?: string;
   source_file_hash?: string;
+  provenance?: DataProvenance | string;
+  raw_payload?: Record<string, any>;
+  related_detections?: RelatedDetectionSummary[];
+  related_incidents?: RelatedIncidentSummary[];
+}
+
+export type FilterField =
+  | "timestamp"
+  | "hostname"
+  | "username"
+  | "source_ip"
+  | "destination_ip"
+  | "category"
+  | "action"
+  | "severity"
+  | "bytes_out"
+  | "bytes_in"
+  | "source_port"
+  | "destination_port"
+  | "protocol"
+  | "process_name";
+
+export type FilterOperator =
+  | "eq"
+  | "neq"
+  | "contains"
+  | "starts_with"
+  | "in"
+  | "gt"
+  | "gte"
+  | "lt"
+  | "lte";
+
+export interface FilterCondition {
+  field: FilterField;
+  operator: FilterOperator;
+  value: any;
+}
+
+export interface FilterGroup {
+  logic: "AND" | "OR";
+  conditions: FilterCondition[];
+  groups?: FilterGroup[];
+}
+
+export interface TimeRangeFilter {
+  start?: string;
+  end?: string;
+}
+
+export interface ThreatHuntQueryRequest {
+  time_range?: TimeRangeFilter;
+  filter_group?: FilterGroup;
+  sort_by?: FilterField;
+  sort_order?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+}
+
+export interface HuntedEventItem extends CommonEvent {}
+
+export interface ThreatHuntQueryResponse {
+  items: HuntedEventItem[];
+  total: number;
+  limit: number;
+  offset: number;
+  query_duration_ms: number;
+  applied_filter_count: number;
+  provenance: DataProvenance;
 }
 
 export interface Detection {

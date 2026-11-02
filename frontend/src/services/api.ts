@@ -13,6 +13,8 @@ import {
   AttackGraphEdge,
   ThreatLabScenario,
   ScenarioReplayResult,
+  ThreatHuntQueryRequest,
+  ThreatHuntQueryResponse,
 } from "../types";
 
 const API_BASE = "/api/v1";
@@ -308,6 +310,28 @@ export const api = {
     }
     const data = await res.json();
     return Array.isArray(data) ? data : [];
+  },
+
+  /**
+   * Execute structured threat hunting query (Phase 6.2)
+   */
+  async executeThreatHunt(request: ThreatHuntQueryRequest): Promise<ThreatHuntQueryResponse> {
+    const res = await fetch(`${API_BASE}/hunting/query`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+      let message = err.detail || `Threat hunt query failed (HTTP ${res.status})`;
+      if (Array.isArray(err.detail)) {
+        message = err.detail.map((d: any) => d.msg || JSON.stringify(d)).join("; ");
+      }
+      throw new Error(message);
+    }
+
+    return await res.json();
   },
 
   /**

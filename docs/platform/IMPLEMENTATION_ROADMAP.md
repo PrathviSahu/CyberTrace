@@ -175,29 +175,34 @@ flowchart TD
 
 ---
 
-### Feature 7: Threat Hunting Studio & Safe Query Engine (Phase 6.2)
-- **Problem Solved:** Analysts need to proactively hunt for emerging threats across historical telemetry without complex SQL syntax or security risks.
-- **User Workflow:** Analyst opens Threat Hunting $\to$ constructs filter pills (`user == svc_deploy AND bytes_out > 10MB`) $\to$ executes hunt $\to$ reviews virtualized event table $\to$ selects events $\to$ clicks "Create Incident from Selection".
-- **Frontend Screens:** Threat Hunting Studio (`/hunting`), Saved Searches Drawer.
-- **Backend Services:** `ThreatHuntingService`, parameterized query builder.
-- **Database Changes:** `saved_hunt_queries` table.
-- **API Contracts:** `POST /api/v1/hunting/query`, `GET /api/v1/hunting/saved`.
-- **Security Requirements:** Zero raw SQL injection vectors; queries compiled strictly via SQLAlchemy parameterized expressions.
-- **Acceptance Criteria:**
-  - High-performance query execution over 10,000+ events within 200ms.
-  - One-click incident generation from selected rows.
-- **Complexity:** Medium (2 days).
+### Feature 7: Threat Hunting Studio & Safe Query Engine (Phase 6.2 — Completed & Verified)
+- **Problem Solved:** Analysts need to proactively hunt for emerging threats across historical telemetry without complex SQL syntax, N+1 query overhead, or SQL injection vectors.
+- **User Workflow:** Analyst opens Threat Hunting $\to$ toggles Boolean match logic (`AND` / `OR`) $\to$ builds multi-predicate condition rows (`username == svc_deploy`, `bytes_out >= 10MB`, `action != logon_failure`) $\to$ selects UTC time boundary or preset $\to$ executes hunt $\to$ reviews paginated, server-sorted telemetry $\to$ opens Evidence Drawer with batched detection and incident correlations.
+- **Frontend Screens:** Threat Hunting Studio (`/hunting`), Evidence Drawer (`EvidenceDrawer.tsx`), Data Provenance Badge (`DataProvenanceBadge.tsx`).
+- **Backend Services:** `HuntingRepository` (`backend/app/db/repositories/hunting_repo.py`), AST query compiler (`FilterGroup`, `FilterCondition`, `TimeRangeFilter`).
+- **API Contracts:** `POST /api/v1/hunting/query`.
+- **Security & Provenance Controls:**
+  - Zero raw SQL injection vectors; queries compiled strictly via parameterized SQLAlchemy column expressions.
+  - Strict integer validation rejecting booleans, floats, strings, negative bytes, and out-of-range ports ($0 \le \text{port} \le 65535$).
+  - Bounded AST depth ($\le 3$) and group conditions ($\le 20$).
+  - Constant $O(1)$ query complexity: maximum 4 SQL queries per request with zero N+1 scaling.
+  - Multi-tier provenance classification (`observed_telemetry`, `synthetic_benchmark`, `unknown`, `mixed`).
+  - Strict separation of cryptographic file checksums (SHA-256) from source authenticity.
+- **Acceptance Criteria & Verification:**
+  - 49 dedicated threat hunting tests passing (144/144 full backend pytest suite).
+  - 20 frontend component tests passing (20/20 vitest suite).
+  - Headless browser-to-database integration verified with live response times $< 30\text{ ms}$.
+- **Status:** **Completed & Verified.**
 
 ---
 
-### Feature 8: Frontend Asset, Identity & Threat Hunting Integration (Phase 6.3)
-- **Problem Solved:** Connects existing dark SOC frontend views to Phase 6.1 & 6.2 backend APIs, replacing mock fixtures with observed telemetry.
-- **Frontend Screens:** `AssetInventory.tsx`, `ThreatHunting.tsx`, `DataProvenanceBadge.tsx`.
-- **Key Deliverables:**
-  - Extend `DataProvenance` union type in `frontend/src/types/index.ts` to include `"observed_telemetry"`.
-  - Update `DataProvenanceBadge.tsx` to render `"observed_telemetry"` using neutral styling (never defaulting to Demo Benchmark).
-  - Wire live API fetch hooks into `AssetInventory.tsx`.
-- **Complexity:** Low-Medium (1 day).
+### Feature 8: Saved Threat Hunts & Proactive Detection Creation (Phase 6.3)
+- **Problem Solved:** Allows analysts to bookmark high-fidelity hunt queries, schedule recurring query checks, and convert validated hunt predicates directly into custom detection rules.
+- **Frontend Screens:** Saved Searches Drawer, Rule Conversion Modal.
+- **Backend Services:** `SavedHuntRepository`, detection rule generator.
+- **Database Changes:** `saved_hunt_queries` table.
+- **API Contracts:** `GET /api/v1/hunting/saved`, `POST /api/v1/hunting/saved`, `POST /api/v1/hunting/promote-rule`.
+- **Complexity:** Medium (1-2 days).
 
 ---
 

@@ -24,7 +24,9 @@ from app.investigation.service import InvestigationService
 from app.threatlab.models import ScenarioReplayResponse, ScenarioSummary
 from app.threatlab.service import ThreatLabService
 from app.db.repositories.asset_repo import AssetRepository, IdentityRepository
+from app.db.repositories.hunting_repo import HuntingRepository
 from app.schemas.asset import AssetDetail, AssetListResponse, AssetSummary, IdentityDetail, IdentityListResponse, IdentitySummary
+from app.schemas.hunting import ThreatHuntQueryRequest, ThreatHuntQueryResponse
 
 
 @asynccontextmanager
@@ -159,6 +161,25 @@ async def list_events(
         }
         for e in events
     ]
+
+
+@app.post(
+    f"{settings.API_V1_STR}/hunting/query",
+    response_model=ThreatHuntQueryResponse,
+    tags=["Threat Hunting"],
+    summary="Execute structured threat hunting query",
+    description=(
+        "Executes a parameterized multi-condition search over security telemetry. "
+        "Supports time ranges, allowlisted field operators (eq, neq, contains, starts_with, in, gt, gte, lt, lte), "
+        "and nested boolean groups (AND/OR). Returns matching events with batched related detection and incident links."
+    ),
+)
+async def execute_threat_hunt(
+    request: ThreatHuntQueryRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> ThreatHuntQueryResponse:
+    repo = HuntingRepository(session)
+    return await repo.execute_hunt(request)
 
 
 @app.get(f"{settings.API_V1_STR}/detections", tags=["Detections"])

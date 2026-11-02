@@ -272,3 +272,93 @@ class ApprovalRequestModel(Base):
   - *Parameters:* `username` (URL-decoded path parameter; canonical lowercase lookup).
   - *Payload:* `IdentityDetail` containing first seen, last seen, distinct event count, detection count, incident count, triggered detection rules, and linked incident IDs.
   - *Response:* Returns 404 when not observed in any ingested event.
+
+---
+
+### 3.9 Structured Threat Hunting Query Engine (Phase 6.2)
+
+- `POST /api/v1/hunting/query`: Executes parameterized, multi-condition searches over persisted security telemetry.
+  - *Request Body (`ThreatHuntQueryRequest`):*
+    ```json
+    {
+      "time_range": {
+        "start": "2026-11-01T00:00:00Z",
+        "end": "2026-11-02T00:00:00Z"
+      },
+      "filter_group": {
+        "logic": "AND",
+        "conditions": [
+          { "field": "username", "operator": "equals", "value": "svc_deploy" },
+          { "field": "bytes_out", "operator": "gte", "value": 10485760 }
+        ],
+        "groups": []
+      },
+      "sort_by": "timestamp",
+      "sort_order": "desc",
+      "limit": 50,
+      "offset": 0
+    }
+    ```
+  - *AST Filter Validation:*
+    - **Allowlisted Fields:** `timestamp`, `hostname`, `username`, `source_ip`, `destination_ip`, `category`, `action`, `severity`, `bytes_out`, `bytes_in`, `source_port`, `destination_port`, `protocol`, `process_name`.
+    - **Allowlisted Operators:** `equals` (`eq`), `not_equals` (`neq`), `contains`, `starts_with`, `in`, `greater_than` (`gt`), `greater_than_or_equal` (`gte`), `less_than` (`lt`), `less_than_or_equal` (`lte`).
+    - **Strict Type Validation:** Integer fields (`bytes_out`, `bytes_in`, `source_port`, `destination_port`) reject booleans, floating-point numbers, and strings. Ports must be $0 \le \text{port} \le 65535$. Byte counts must be $\ge 0$.
+    - **AST Boundaries:** Group condition count $\le 20$; group nesting depth $\le 3$; list size for `in` operator between 1 and 100 items.
+  - *Query Complexity & Join Optimization:*
+    - Constant $O(1)$ database query count (maximum 4 queries: count, page, detection associations, incident associations).
+    - Zero N+1 query multiplication regardless of page size.
+    - Deterministic tie-breaking on `id DESC` for equal timestamp values.
+  - *Response Body (`ThreatHuntQueryResponse`):*
+    ```json
+    {
+      "items": [
+        {
+          "id": "evt_csv_99aaf0221278",
+          "timestamp": "2026-11-01T08:10:15Z",
+          "source_type": "csv",
+          "category": "network_connection",
+          "action": "network_connect",
+          "severity": "high",
+          "username": "svc_deploy",
+          "hostname": "SRV-APP-01",
+          "source_ip": "10.20.30.44",
+          "source_port": 55001,
+          "destination_ip": "203.0.113.88",
+          "destination_port": 443,
+          "protocol": "HTTPS",
+          "bytes_out": 22000000,
+          "bytes_in": 180000,
+          "process_name": "curl",
+          "source_file_hash": "15def78315f04d2b6925461abb45a05fdc7a8c5c0c6472f980e0350a4b37d4",
+          "provenance": "unknown",
+          "related_detections": [
+            {
+              "id": "DET-004",
+              "rule_id": "anomalous_outbound_data",
+              "rule_name": "Anomalous Outbound Network Activity",
+              "severity": "high",
+              "explanation": "Outbound egress threshold exceeded"
+            }
+          ],
+          "related_incidents": [
+            {
+              "id": "inc_b3771752b0",
+              "title": "Multi-Stage Intrusion & Data Exfiltration targeting 'svc_deploy'",
+              "severity": "critical",
+              "status": "open"
+            }
+          ]
+        }
+      ],
+      "total": 1,
+      "limit": 50,
+      "offset": 0,
+      "query_duration_ms": 14.62,
+      "applied_filter_count": 2,
+      "provenance": "unknown"
+    }
+    ```
+  - *Provenance Integrity:*
+    - Response and items carry explicit `provenance` classifications (`observed_telemetry`, `synthetic_benchmark`, `unknown`, `mixed`).
+    - `source_file_hash` is preserved as an integrity checksum and is never treated as proof of authentic organizational telemetry.
+
