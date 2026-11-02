@@ -16,6 +16,8 @@ from .rule_draft_repo import (
     ArchivedRuleError,
     RuleDraftRepository,
 )
+from .active_rule_repo import ActiveRuleRepository
+from .rule_audit_repo import RuleAuditRepository
 
 __all__ = [
     "EventRepository",
@@ -25,6 +27,8 @@ __all__ = [
     "HuntingRepository",
     "SavedHuntRepository",
     "RuleDraftRepository",
+    "ActiveRuleRepository",
+    "RuleAuditRepository",
     "VersionConflictError",
     "ArchivedHuntError",
     "ArchivedRuleError",

@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     PRIVILEGE_ESCALATION_WINDOW_SECONDS: int = 1800  # 30 minutes
     OUTBOUND_EGRESS_THRESHOLD_BYTES: int = 50 * 1024 * 1024  # 50 MB
     
+    # Governance & Rule Lifecycle (Phase 6.3C)
+    ALLOW_DEMO_SELF_APPROVAL: bool = False
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

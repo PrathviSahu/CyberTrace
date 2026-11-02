@@ -13,6 +13,8 @@ from app.schemas.saved_hunt import SavedHuntQueryDefinition
 class DraftStatus(str, Enum):
     DRAFT = "DRAFT"
     VALIDATED = "VALIDATED"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
     ARCHIVED = "ARCHIVED"
 
 
@@ -172,3 +174,16 @@ class DetectionRuleDraftListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class RuleDraftApprovalRequest(BaseModel):
+    draft_version: int = Field(..., ge=1, description="Expected draft version for optimistic concurrency control")
+    approver_id: str = Field(..., min_length=1, max_length=128, description="Caller-supplied reviewer identity")
+    justification: str = Field(..., min_length=10, description="Mandatory reviewer rationale (minimum 10 characters)")
+    activate_immediately: bool = Field(default=True, description="Whether to activate rule in production immediately")
+
+
+class RuleDraftRejectionRequest(BaseModel):
+    draft_version: int = Field(..., ge=1, description="Expected draft version for optimistic concurrency control")
+    reviewer_id: str = Field(..., min_length=1, max_length=128, description="Caller-supplied reviewer identity")
+    justification: str = Field(..., min_length=10, description="Mandatory rejection rationale (minimum 10 characters)")

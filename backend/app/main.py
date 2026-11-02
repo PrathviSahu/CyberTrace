@@ -45,11 +45,39 @@ from app.schemas.saved_hunt import (
     SavedHuntResponse,
     SavedHuntUpdate,
 )
+from app.db.repositories.active_rule_repo import ActiveRuleRepository
+from app.db.repositories.rule_audit_repo import RuleAuditRepository
+from app.services.rule_lifecycle_service import (
+    ActiveRuleNotFoundError,
+    DeprecatedRuleTerminalError,
+    DraftArchivedError,
+    DraftNotFoundError,
+    DraftNotValidatedError,
+    DuplicateApprovalError,
+    FourEyesViolationError,
+    InvalidLifecycleTransitionError,
+    RuleLifecycleService,
+    StaleValidationError,
+    ValidationRationaleError,
+    VersionConflictError as LifecycleVersionConflictError,
+)
+from app.schemas.active_rule import (
+    ActiveDetectionRuleListResponse,
+    ActiveDetectionRuleResponse,
+    ActiveRuleStatus,
+    ActiveRuleStatusUpdateRequest,
+)
+from app.schemas.rule_audit import (
+    RuleAuditEntryResponse,
+    RuleAuditListResponse,
+)
 from app.schemas.rule_draft import (
     DetectionRuleDraftCreate,
     DetectionRuleDraftListResponse,
     DetectionRuleDraftResponse,
     DetectionRuleDraftUpdate,
+    RuleDraftApprovalRequest,
+    RuleDraftRejectionRequest,
     RuleValidationReportResponse,
     RuleValidationRunRequest,
 )
@@ -143,10 +171,8 @@ async def upload_log_file(
 
     # Process events through rules and correlation engine
     service = IncidentService(session)
-    detections = service.detection_engine.evaluate_all(events)
-    detections_count = len(detections)
-
     incidents = await service.process_and_correlate_events(events, source_file_hash=source_file_hash)
+    detections_count = len(service.latest_detections)
 
     return LogUploadResponse(
         filename=file.filename,
@@ -627,6 +653,182 @@ async def list_rule_draft_validations(
         "limit": limit,
         "offset": offset,
     }
+
+
+# ===========================================================================
+# Section: Detection Rule Lifecycle, Governance, Active Rules & Audit Ledger (Phase 6.3C)
+# ===========================================================================
+
+@app.post(
+    f"{settings.API_V1_STR}/rules/drafts/{{draft_id}}/approve",
+    response_model=ActiveDetectionRuleResponse,
+    tags=["Detection Rules", "Rule Governance"],
+    summary="Approve detection rule draft and deploy active rule",
+    description=(
+        "Enforces demonstration four-eyes review gate. Requires completed non-stale validation run. "
+        "Atomically allocates sequential rule code (CUST-xxx), transitions draft to APPROVED, "
+        "creates frozen production active rule, and records an immutable audit ledger entry."
+    ),
+)
+async def approve_rule_draft(
+    draft_id: str,
+    payload: RuleDraftApprovalRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> ActiveDetectionRuleResponse:
+    service = RuleLifecycleService(session)
+    try:
+        active_rule, _, _ = await service.approve_rule_draft(draft_id, payload)
+        return ActiveDetectionRuleResponse.model_validate(active_rule)
+    except DraftNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except FourEyesViolationError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except ValidationRationaleError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except (
+        DraftArchivedError,
+        DraftNotValidatedError,
+        StaleValidationError,
+        DuplicateApprovalError,
+        LifecycleVersionConflictError,
+    ) as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+
+@app.post(
+    f"{settings.API_V1_STR}/rules/drafts/{{draft_id}}/reject",
+    response_model=DetectionRuleDraftResponse,
+    tags=["Detection Rules", "Rule Governance"],
+    summary="Reject detection rule draft with justification",
+    description=(
+        "Rejects a validated detection rule draft with mandatory reviewer rationale (min 10 characters). "
+        "Resets draft status back to editable DRAFT for author rework and records an immutable audit entry."
+    ),
+)
+async def reject_rule_draft(
+    draft_id: str,
+    payload: RuleDraftRejectionRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> DetectionRuleDraftResponse:
+    service = RuleLifecycleService(session)
+    repo = RuleDraftRepository(session)
+    try:
+        rejected_draft, _ = await service.reject_rule_draft(draft_id, payload)
+        resp = DetectionRuleDraftResponse.model_validate(rejected_draft)
+        resp.latest_validation = await repo.get_latest_validation_summary(rejected_draft.id)
+        return resp
+    except DraftNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValidationRationaleError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except (DraftArchivedError, DraftNotValidatedError, LifecycleVersionConflictError) as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+
+@app.get(
+    f"{settings.API_V1_STR}/rules/active",
+    response_model=ActiveDetectionRuleListResponse,
+    tags=["Detection Rules", "Active Rules"],
+    summary="List active production detection rules",
+    description="Lists active, disabled, and deprecated custom detection rules with optional status filtering.",
+)
+async def list_active_rules(
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by rule status (ACTIVE, DISABLED, DEPRECATED)"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_db_session),
+) -> ActiveDetectionRuleListResponse:
+    repo = ActiveRuleRepository(session)
+    items, total = await repo.list_active_rules(status=status_filter, limit=limit, offset=offset)
+    return ActiveDetectionRuleListResponse(
+        items=[ActiveDetectionRuleResponse.model_validate(r) for r in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.get(
+    f"{settings.API_V1_STR}/rules/active/{{rule_id}}",
+    response_model=ActiveDetectionRuleResponse,
+    tags=["Detection Rules", "Active Rules"],
+    summary="Get active detection rule by ID or rule code",
+)
+async def get_active_rule(
+    rule_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> ActiveDetectionRuleResponse:
+    repo = ActiveRuleRepository(session)
+    rule = await repo.get_active_rule_by_id(rule_id)
+    if not rule:
+        rule = await repo.get_active_rule_by_code(rule_id)
+    if not rule:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Active detection rule '{rule_id}' was not found.",
+        )
+    return ActiveDetectionRuleResponse.model_validate(rule)
+
+
+@app.patch(
+    f"{settings.API_V1_STR}/rules/active/{{rule_id}}/status",
+    response_model=ActiveDetectionRuleResponse,
+    tags=["Detection Rules", "Active Rules"],
+    summary="Update active rule status (ACTIVE <-> DISABLED -> DEPRECATED)",
+    description=(
+        "Updates active rule status using optimistic concurrency version locking. "
+        "DEPRECATED is a permanent terminal state (cannot be reactivated). "
+        "Appends before/after state diff to immutable audit ledger."
+    ),
+)
+async def update_active_rule_status(
+    rule_id: str,
+    payload: ActiveRuleStatusUpdateRequest,
+    session: AsyncSession = Depends(get_db_session),
+) -> ActiveDetectionRuleResponse:
+    service = RuleLifecycleService(session)
+    try:
+        updated_rule, _ = await service.toggle_active_rule_status(rule_id, payload)
+        return ActiveDetectionRuleResponse.model_validate(updated_rule)
+    except ActiveRuleNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except (ValidationRationaleError, InvalidLifecycleTransitionError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except (DeprecatedRuleTerminalError, LifecycleVersionConflictError) as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+
+
+@app.get(
+    f"{settings.API_V1_STR}/rules/audit",
+    response_model=RuleAuditListResponse,
+    tags=["Detection Rules", "Audit Ledger"],
+    summary="Query immutable rule lifecycle audit ledger",
+    description="Lists append-only audit entries recording all candidate draft and active rule state transitions.",
+)
+async def list_rule_audit_entries(
+    target_type: Optional[str] = Query(None, description="Target entity type: 'DRAFT' or 'ACTIVE_RULE'"),
+    target_id: Optional[str] = Query(None, description="Target entity ID"),
+    actor: Optional[str] = Query(None, description="Filter by actor username"),
+    action: Optional[str] = Query(None, description="Filter by audit action (e.g. APPROVE_DRAFT, DEACTIVATE_RULE)"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_db_session),
+) -> RuleAuditListResponse:
+    repo = RuleAuditRepository(session)
+    items, total = await repo.list_audit_entries(
+        target_type=target_type,
+        target_id=target_id,
+        actor=actor,
+        action=action,
+        limit=limit,
+        offset=offset,
+    )
+    return RuleAuditListResponse(
+        items=[RuleAuditEntryResponse.model_validate(e) for e in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @app.get(f"{settings.API_V1_STR}/detections", tags=["Detections"])

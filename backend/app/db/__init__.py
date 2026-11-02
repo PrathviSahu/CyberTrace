@@ -10,6 +10,9 @@ from .models import (
     SavedHuntModel,
     DetectionRuleDraftModel,
     RuleValidationRunModel,
+    RuleCodeAllocatorModel,
+    ActiveDetectionRuleModel,
+    RuleAuditEntryModel,
 )
 
 __all__ = [
@@ -30,4 +33,7 @@ __all__ = [
     "SavedHuntModel",
     "DetectionRuleDraftModel",
     "RuleValidationRunModel",
+    "RuleCodeAllocatorModel",
+    "ActiveDetectionRuleModel",
+    "RuleAuditEntryModel",
 ]
