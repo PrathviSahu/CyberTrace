@@ -7,6 +7,11 @@ from .hunting_repo import (
     classify_event_provenance,
     determine_response_provenance,
 )
+from .saved_hunt_repo import (
+    ArchivedHuntError,
+    SavedHuntRepository,
+    VersionConflictError,
+)
 
 __all__ = [
     "EventRepository",
@@ -14,6 +19,9 @@ __all__ = [
     "IncidentRepository",
     "InvestigationRepository",
     "HuntingRepository",
+    "SavedHuntRepository",
+    "VersionConflictError",
+    "ArchivedHuntError",
     "classify_event_provenance",
     "determine_response_provenance",
 ]

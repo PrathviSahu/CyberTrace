@@ -49,6 +49,7 @@ erDiagram
 - **`DetectionEventModel` (`detection_events`):** Records rule executions. Stores `rule_id`, `entity_type`, `entity_value`, `detected_at`, `explanation`.
 - **`IncidentModel` (`incidents`):** Correlated incident entities. Stores `correlation_key`, `title`, `severity`, `status`, `first_seen`, `last_seen`.
 - **`AIInvestigationModel` (`ai_investigations`):** Persists investigation findings. Stores `model_id`, `status` (`completed`, `fallback`), `executive_summary`, `structured_result` (JSON), `event_citations` (JSON), `tool_call_count`, `duration_seconds`, `request_id`, `created_at`.
+- **`SavedHuntModel` (`saved_hunts`):** Persisted threat hunting query definitions (Phase 6.3A). Stores `id` (`hunt_...`), `name` (indexed), `description`, `tags` (JSON array), `query_definition` (validated AST JSON), `created_by` (caller-supplied demo metadata), `created_at` (indexed), `updated_at`, `version` (optimistic concurrency lock starting at 1), `last_run_at`, `run_count`, `is_archived` (indexed boolean soft-delete flag).
 
 ### 2.2 Advanced Platform Models (New Extensions)
 
@@ -361,4 +362,95 @@ class ApprovalRequestModel(Base):
   - *Provenance Integrity:*
     - Response and items carry explicit `provenance` classifications (`observed_telemetry`, `synthetic_benchmark`, `unknown`, `mixed`).
     - `source_file_hash` is preserved as an integrity checksum and is never treated as proof of authentic organizational telemetry.
+
+---
+
+### 3.10 Saved Threat Hunts & Query Persistence (Phase 6.3A)
+
+- **`POST /api/v1/hunting/saved`** (Status: `201 Created`):
+  - *Purpose:* Persists a validated AST query definition. Always initializes at `version = 1`, `run_count = 0`, `last_run_at = null`, and `is_archived = false`.
+  - *Author Attribution Notice:* `created_by` is caller-supplied demonstration metadata. No cryptographic authentication or enterprise RBAC is enforced in this phase.
+  - *Request Body (`SavedHuntCreate`):*
+    ```json
+    {
+      "name": "High Egress Network Activity",
+      "description": "Searches for outbound network connections exceeding 10MB",
+      "tags": ["network", "exfiltration", "tier1"],
+      "query_definition": {
+        "time_range": {
+          "start": "2026-11-01T00:00:00Z",
+          "end": "2026-11-02T00:00:00Z"
+        },
+        "filter_group": {
+          "logic": "AND",
+          "conditions": [
+            { "field": "action", "operator": "eq", "value": "network_connect" },
+            { "field": "bytes_out", "operator": "gte", "value": 10485760 }
+          ],
+          "groups": []
+        },
+        "sort_by": "bytes_out",
+        "sort_order": "desc",
+        "limit": 50,
+        "offset": 0
+      },
+      "created_by": "analyst_alice"
+    }
+    ```
+  - *Response Body (`SavedHuntResponse`):* Returns full model metadata including `id`, timestamps, `version: 1`, and `author_attribution_note`.
+
+- **`GET /api/v1/hunting/saved`**:
+  - *Purpose:* Paginated list of saved threat hunts. Excludes archived hunts by default unless `include_archived=true`.
+  - *Query Parameters:*
+    - `query` (optional string): Case-insensitive substring match on `name` or `description` with wildcard escaping.
+    - `tag` (optional string): Exact matching against persisted JSON tags.
+    - `include_archived` (optional boolean, default `false`): Include soft-deleted/archived hunts.
+    - `limit` (optional int, default 50, min 1, max 200)
+    - `offset` (optional int, default 0)
+  - *Response Body (`SavedHuntListResponse`):* `{ "items": [...], "total": 12, "limit": 50, "offset": 0 }`.
+
+- **`GET /api/v1/hunting/saved/{hunt_id}`**:
+  - *Purpose:* Direct lookup of a saved hunt by its UUID identifier. Returns `SavedHuntResponse` even if archived (`is_archived: true`). Returns `404 Not Found` if missing.
+
+- **`PUT /api/v1/hunting/saved/{hunt_id}`**:
+  - *Purpose:* Updates name, description, tags, or query definition AST.
+  - *Optimistic Concurrency & Lifecycle Protection:* Request must include `version: <int>`. Executed as an atomic conditional SQL update requiring matching ID, matching version, and `is_archived = false`. Returns `HTTP 409 Conflict` if the version is stale OR if the hunt is archived. On success, atomically increments `version += 1` and updates `updated_at`.
+  - *Request Body (`SavedHuntUpdate`):*
+    ```json
+    {
+      "version": 1,
+      "name": "Updated High Egress Activity",
+      "tags": ["network", "exfiltration", "critical"]
+    }
+    ```
+
+- **`DELETE /api/v1/hunting/saved/{hunt_id}`**:
+  - *Purpose:* Soft-delete archival (`is_archived = true`). Preserves complete query definition and metrics history. Does not perform destructive SQL deletion. Idempotent: repeated archive calls safely return the current state without mutating timestamps. Returns the updated `SavedHuntResponse`.
+
+- **`POST /api/v1/hunting/saved/{hunt_id}/execute`**:
+  - *Purpose:* Re-executes the stored query AST using the unified hunting compiler (`HuntingRepository`).
+  - *Lifecycle & Concurrency Guards:* Rejects archived hunts with `HTTP 409 Conflict`. Snapshots the exact version and AST definition upfront before query execution so concurrent updates cannot mutate the query in flight. On query success, atomically increments `run_count` and updates `last_run_at`. Failed queries do not increment counters.
+  - *Request Body (`SavedHuntExecuteRequest`, optional):* Optional override `limit` and `offset`.
+  - *Response Body (`SavedHuntExecuteResponse`):*
+    ```json
+    {
+      "hunt_id": "hunt_98a7bc12e4f0",
+      "hunt_name": "High Egress Network Activity",
+      "executed_version": 2,
+      "executed_at": "2026-11-02T19:35:00Z",
+      "run_count": 5,
+      "items": [...],
+      "total": 3,
+      "limit": 50,
+      "offset": 0,
+      "query_duration_ms": 11.45,
+      "applied_filter_count": 2,
+      "provenance": "observed_telemetry"
+    }
+    ```
+
+- **`POST /api/v1/hunting/saved/{hunt_id}/duplicate`** (Status: `201 Created`):
+  - *Purpose:* Clones an existing saved hunt into an independent new record with a new UUID.
+  - *Archived Hunt Forking:* Duplicating an archived hunt is explicitly supported as a defensive workflow: it forks the query baseline into a new active hunt (`version = 1`, `run_count = 0`, `last_run_at = null`, `is_archived = false`) while preserving the original archived record untouched. Name defaults to `"Copy of {original.name}"` (truncated to 128 chars). Mutating either hunt does not affect the other.
+
 

@@ -25,8 +25,22 @@ from app.threatlab.models import ScenarioReplayResponse, ScenarioSummary
 from app.threatlab.service import ThreatLabService
 from app.db.repositories.asset_repo import AssetRepository, IdentityRepository
 from app.db.repositories.hunting_repo import HuntingRepository
+from app.db.repositories.saved_hunt_repo import (
+    ArchivedHuntError,
+    SavedHuntRepository,
+    VersionConflictError,
+)
 from app.schemas.asset import AssetDetail, AssetListResponse, AssetSummary, IdentityDetail, IdentityListResponse, IdentitySummary
 from app.schemas.hunting import ThreatHuntQueryRequest, ThreatHuntQueryResponse
+from app.schemas.saved_hunt import (
+    SavedHuntCreate,
+    SavedHuntDuplicateRequest,
+    SavedHuntExecuteRequest,
+    SavedHuntExecuteResponse,
+    SavedHuntListResponse,
+    SavedHuntResponse,
+    SavedHuntUpdate,
+)
 
 
 @asynccontextmanager
@@ -180,6 +194,200 @@ async def execute_threat_hunt(
 ) -> ThreatHuntQueryResponse:
     repo = HuntingRepository(session)
     return await repo.execute_hunt(request)
+
+
+# ---------------------------------------------------------------------------
+# Phase 6.3A — Saved Threat Hunts & Query Persistence
+# ---------------------------------------------------------------------------
+
+@app.post(
+    f"{settings.API_V1_STR}/hunting/saved",
+    response_model=SavedHuntResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Threat Hunting", "Saved Hunts"],
+    summary="Create a new saved threat hunt",
+    description=(
+        "Persists a validated threat hunt query AST definition. Starts at version 1 with zero executions. "
+        "Created_by identity is caller-supplied demo metadata (no cryptographic auth or RBAC enforced)."
+    ),
+)
+async def create_saved_hunt(
+    data: SavedHuntCreate,
+    session: AsyncSession = Depends(get_db_session),
+) -> SavedHuntResponse:
+    repo = SavedHuntRepository(session)
+    hunt = await repo.create_saved_hunt(data)
+    return SavedHuntResponse.model_validate(hunt)
+
+
+@app.get(
+    f"{settings.API_V1_STR}/hunting/saved",
+    response_model=SavedHuntListResponse,
+    tags=["Threat Hunting", "Saved Hunts"],
+    summary="List saved threat hunts",
+    description=(
+        "Returns a paginated list of saved threat hunts. Excludes archived hunts by default unless include_archived=True. "
+        "Supports substring search on hunt name/description and exact matching on categorization tags."
+    ),
+)
+async def list_saved_hunts(
+    query: Optional[str] = Query(None, max_length=128, description="Search term for name and description"),
+    tag: Optional[str] = Query(None, max_length=64, description="Filter by categorization tag"),
+    include_archived: bool = Query(False, description="Whether to include soft-deleted/archived hunts"),
+    limit: int = Query(50, ge=1, le=200, description="Page limit (1-200)"),
+    offset: int = Query(0, ge=0, le=10000, description="Page offset (0-10000)"),
+    session: AsyncSession = Depends(get_db_session),
+) -> SavedHuntListResponse:
+    repo = SavedHuntRepository(session)
+    items, total = await repo.list_saved_hunts(
+        query=query,
+        tag=tag,
+        include_archived=include_archived,
+        limit=limit,
+        offset=offset,
+    )
+    return SavedHuntListResponse(
+        items=[SavedHuntResponse.model_validate(h) for h in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.get(
+    f"{settings.API_V1_STR}/hunting/saved/{{hunt_id}}",
+    response_model=SavedHuntResponse,
+    tags=["Threat Hunting", "Saved Hunts"],
+    summary="Retrieve a saved threat hunt by ID",
+    description="Fetches full details of a saved threat hunt, including persisted AST query definition.",
+)
+async def get_saved_hunt(
+    hunt_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> SavedHuntResponse:
+    repo = SavedHuntRepository(session)
+    hunt = await repo.get_saved_hunt(hunt_id)
+    if not hunt:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Saved threat hunt '{hunt_id}' was not found.",
+        )
+    return SavedHuntResponse.model_validate(hunt)
+
+
+@app.put(
+    f"{settings.API_V1_STR}/hunting/saved/{{hunt_id}}",
+    response_model=SavedHuntResponse,
+    tags=["Threat Hunting", "Saved Hunts"],
+    summary="Update a saved threat hunt",
+    description=(
+        "Updates name, description, tags, or query AST. Requires providing the current 'version' for "
+        "optimistic concurrency control. Returns HTTP 409 Conflict if the version is stale. Increments version on success."
+    ),
+)
+async def update_saved_hunt(
+    hunt_id: str,
+    data: SavedHuntUpdate,
+    session: AsyncSession = Depends(get_db_session),
+) -> SavedHuntResponse:
+    repo = SavedHuntRepository(session)
+    try:
+        updated = await repo.update_saved_hunt(hunt_id, data)
+        return SavedHuntResponse.model_validate(updated)
+    except (VersionConflictError, ArchivedHuntError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+
+@app.delete(
+    f"{settings.API_V1_STR}/hunting/saved/{{hunt_id}}",
+    response_model=SavedHuntResponse,
+    tags=["Threat Hunting", "Saved Hunts"],
+    summary="Archive a saved threat hunt (soft delete)",
+    description=(
+        "Soft-deletes a saved threat hunt by setting is_archived = True. "
+        "Preserves all query definition and historical metrics. Excludes it from default hunt listings."
+    ),
+)
+async def archive_saved_hunt(
+    hunt_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> SavedHuntResponse:
+    repo = SavedHuntRepository(session)
+    try:
+        archived = await repo.archive_saved_hunt(hunt_id)
+        return SavedHuntResponse.model_validate(archived)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+
+@app.post(
+    f"{settings.API_V1_STR}/hunting/saved/{{hunt_id}}/execute",
+    response_model=SavedHuntExecuteResponse,
+    tags=["Threat Hunting", "Saved Hunts"],
+    summary="Re-execute a saved threat hunt",
+    description=(
+        "Re-runs the persisted query definition using the unified hunting compiler. "
+        "Atomically increments run_count, updates last_run_at timestamp, and records the executed version."
+    ),
+)
+async def execute_saved_hunt(
+    hunt_id: str,
+    request: Optional[SavedHuntExecuteRequest] = None,
+    session: AsyncSession = Depends(get_db_session),
+) -> SavedHuntExecuteResponse:
+    repo = SavedHuntRepository(session)
+    try:
+        return await repo.execute_saved_hunt(hunt_id, request)
+    except ArchivedHuntError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
+
+@app.post(
+    f"{settings.API_V1_STR}/hunting/saved/{{hunt_id}}/duplicate",
+    response_model=SavedHuntResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Threat Hunting", "Saved Hunts"],
+    summary="Duplicate a saved threat hunt",
+    description=(
+        "Clones an existing hunt into a new, independent saved hunt record starting at version 1 "
+        "with reset execution metrics (run_count=0, last_run_at=None, is_archived=False)."
+    ),
+)
+async def duplicate_saved_hunt(
+    hunt_id: str,
+    request: Optional[SavedHuntDuplicateRequest] = None,
+    session: AsyncSession = Depends(get_db_session),
+) -> SavedHuntResponse:
+    repo = SavedHuntRepository(session)
+    req = request or SavedHuntDuplicateRequest()
+    try:
+        cloned = await repo.duplicate_saved_hunt(hunt_id, req)
+        return SavedHuntResponse.model_validate(cloned)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+
 
 
 @app.get(f"{settings.API_V1_STR}/detections", tags=["Detections"])

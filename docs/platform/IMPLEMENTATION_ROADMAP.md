@@ -197,12 +197,16 @@ flowchart TD
 ---
 
 ### Feature 8: Saved Threat Hunts & Proactive Detection Creation (Phase 6.3)
-- **Problem Solved:** Allows analysts to bookmark high-fidelity hunt queries, schedule recurring query checks, and convert validated hunt predicates directly into custom detection rules.
+- **Problem Solved:** Decouples query persistence from detection rules, enabling analysts to bookmark high-fidelity hunt queries, manage query versions with optimistic concurrency locks, and safely re-execute hunts before promoting validated AST predicates into candidate detection rules.
+- **Sub-phases:**
+  - **Phase 6.3A: Saved Threat Hunts & Query Persistence:** `SavedHuntModel`, atomic optimistic concurrency control (HTTP 409 Conflict), lifecycle archive protection (HTTP 409 Conflict), independent duplication, and query re-execution via the unified hunting compiler. **(Completed & Verified: 166/166 backend tests passing, clean Alembic migration `1da2a69a7cf3`).**
+  - **Phase 6.3B: Detection Rule Drafts & Pre-flight Validation:** Promotion of saved hunt AST to immutable rule draft; pre-flight simulation against historical telemetry and ThreatLab benchmarks. *(Pending review).*
+  - **Phase 6.3C: Four-Eyes Approval Workflow & Promotion to Active Detection Rule:** Dual-analyst review gate, immutable audit ledger, and live in-memory AST matcher execution alongside `DET-001` through `DET-004`. *(Pending review).*
 - **Frontend Screens:** Saved Searches Drawer, Rule Conversion Modal.
-- **Backend Services:** `SavedHuntRepository`, detection rule generator.
-- **Database Changes:** `saved_hunt_queries` table.
-- **API Contracts:** `GET /api/v1/hunting/saved`, `POST /api/v1/hunting/saved`, `POST /api/v1/hunting/promote-rule`.
-- **Complexity:** Medium (1-2 days).
+- **Backend Services:** `SavedHuntRepository`, `HuntingRepository`.
+- **Database Changes:** `saved_hunts` table (Alembic `1da2a69a7cf3`).
+- **API Contracts:** `GET /api/v1/hunting/saved`, `POST /api/v1/hunting/saved`, `GET /api/v1/hunting/saved/{id}`, `PUT /api/v1/hunting/saved/{id}`, `DELETE /api/v1/hunting/saved/{id}`, `POST /api/v1/hunting/saved/{id}/execute`, `POST /api/v1/hunting/saved/{id}/duplicate`.
+- **Complexity:** Medium.
 
 ---
 

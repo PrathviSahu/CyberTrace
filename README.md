@@ -177,7 +177,7 @@ cp backend/.env.example backend/.env
 # 3. Run database migrations
 cd backend && alembic upgrade head && cd ..
 
-# 4. Execute backend test suite (144 passing tests)
+# 4. Execute backend test suite (166 passing tests)
 PYTHONPATH=backend pytest backend/tests -v
 
 # 5. Start FastAPI development server
@@ -211,6 +211,13 @@ npm run dev
 | `POST` | `/api/v1/logs/upload` | Ingests multi-source log file, normalizes to CES, and correlates. |
 | `GET` | `/api/v1/events` | Paginated list of normalized CES security events. |
 | `POST` | `/api/v1/hunting/query` | Parameterized structured threat hunt query with AST boolean groups, allowlisted typing, and batched correlation hydration. |
+| `POST` | `/api/v1/hunting/saved` | Persists a validated threat hunt AST definition (Phase 6.3A). |
+| `GET` | `/api/v1/hunting/saved` | Lists saved threat hunts with search, tag filtering, and pagination. |
+| `GET` | `/api/v1/hunting/saved/{id}` | Retrieves a saved threat hunt by ID. |
+| `PUT` | `/api/v1/hunting/saved/{id}` | Updates a saved threat hunt with optimistic version concurrency lock (returns 409 Conflict on mismatch). |
+| `DELETE` | `/api/v1/hunting/saved/{id}` | Soft-deletes/archives a saved threat hunt. |
+| `POST` | `/api/v1/hunting/saved/{id}/execute` | Re-executes a saved threat hunt via the unified compiler and updates execution metrics. |
+| `POST` | `/api/v1/hunting/saved/{id}/duplicate` | Duplicates a saved threat hunt into an independent version 1 record. |
 | `GET` | `/api/v1/detections` | Detections fired by deterministic rule engine. |
 | `GET` | `/api/v1/incidents` | List of correlated security incidents with entity summaries. |
 | `GET` | `/api/v1/incidents/{id}` | Complete incident dossier with detections, events, and graph links. |
@@ -246,13 +253,14 @@ CyberTrace/
 │   │   ├── investigation/             # BharatCode AI agent, verifier, tools, & fallback
 │   │   ├── parsers/                   # Multi-source log parsers (Linux, Windows, Zeek)
 │   │   ├── rules/                     # Deterministic detection engine (DET-001 to DET-004)
-│   │   ├── schemas/                   # Pydantic schemas (CES, Detection, Incident, Hunting AST)
+│   │   ├── schemas/                   # Pydantic schemas (CES, Detection, Incident, Hunting AST, Saved Hunts)
 │   │   └── threatlab/                 # ThreatLab benchmark engine & scenario catalog
-│   └── tests/                         # 144 automated pytest integration & unit tests
+│   └── tests/                         # 166 automated pytest integration & unit tests
 ├── docs/
 │   ├── PROVENANCE_INTEGRITY_AUDIT.md  # Grounded telemetry vs. checksum integrity audit
 │   ├── TEAMMATE_QUICKSTART.md         # Step-by-step local developer onboarding guide
 │   └── platform/                      # Platform Architecture & Specification Blueprint
+│       ├── PHASE_6_3_ARCHITECTURE_DECISIONS.md # Locked decisions & 5-entity lifecycle ADR
 │       ├── PRODUCT_REQUIREMENTS.md
 │       ├── PLATFORM_ARCHITECTURE.md
 │       ├── DATA_MODEL_AND_API_CONTRACTS.md

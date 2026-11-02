@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     DateTime,
     Float,
     ForeignKey,
@@ -220,3 +221,36 @@ class AIInvestigationModel(Base):
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     incident: Mapped["IncidentModel"] = sa_relationship("IncidentModel", back_populates="investigations")
+
+
+class SavedHuntModel(Base):
+    """
+    Persisted Threat Hunting query definition (Phase 6.3A).
+    Stores validated AST queries, metadata, execution metrics, and versioning
+    for optimistic concurrency locking.
+    """
+    __tablename__ = "saved_hunts"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tags: Mapped[List[str]] = mapped_column(JSON, default=list, nullable=False)
+    query_definition: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_by: Mapped[str] = mapped_column(String(128), default="analyst_user", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    last_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    run_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+
