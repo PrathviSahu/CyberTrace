@@ -33,7 +33,6 @@ class ActiveDetectionRuleResponse(BaseModel):
     source_draft_id: str
     source_draft_version: int
     validation_run_id: str
-    query_definition: Dict[str, Any]
     status: ActiveRuleStatus
     version: int
     approved_by: str

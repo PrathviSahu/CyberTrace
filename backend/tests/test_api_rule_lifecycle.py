@@ -481,10 +481,10 @@ async def test_api_get_active_rule_preserves_lineage_and_clean_ast(db_session: A
         assert data["source_draft_id"] == rule.source_draft_id
         assert data["source_draft_version"] == 1
         assert data["validation_run_id"] == rule.validation_run_id
-        # Ensure query_definition is returned as clean JSON and not internal Python AST repr
-        assert isinstance(data["query_definition"], dict)
-        assert "filter_group" in data["query_definition"]
-        assert isinstance(data["query_definition"]["filter_group"]["conditions"], list)
+        # Verify internal query_definition AST is omitted from public response contract
+        assert "query_definition" not in data
+        assert data["status"] == "ACTIVE"
+        assert data["rule_code"] == rule.rule_code
 
 
 @pytest.mark.asyncio
