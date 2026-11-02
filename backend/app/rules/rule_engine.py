@@ -5,7 +5,7 @@ Provides mathematically reproducible, explainable detection passes over normaliz
 
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, Tuple
 from app.core.config import settings
 from app.rules.base import BaseDetectionRule, DetectionResult
 from app.schemas.ces import CommonEvent, EventAction, EventCategory, EventSeverity
@@ -339,9 +339,12 @@ class DetectionEngine:
     """
     Coordinating rule engine that runs multi-pass deterministic detection rules
     over normalized event streams.
+    Constructs an immutable rule execution snapshot upon initialization.
+    Guarantees foundational rules DET-001 through DET-004 run first,
+    followed by active custom rules sorted deterministically by rule code.
     """
-    def __init__(self):
-        self.rules: List[BaseDetectionRule] = [
+    def __init__(self, custom_rules: Optional[Sequence[BaseDetectionRule]] = None):
+        foundational: Tuple[BaseDetectionRule, ...] = (
             RuleDET001_BruteForce(
                 failure_threshold=settings.BRUTE_FORCE_FAILURE_THRESHOLD,
                 window_seconds=settings.BRUTE_FORCE_WINDOW_SECONDS
@@ -355,7 +358,16 @@ class DetectionEngine:
             RuleDET004_AnomalousOutbound(
                 egress_threshold_bytes=settings.OUTBOUND_EGRESS_THRESHOLD_BYTES
             ),
-        ]
+        )
+        sorted_custom: Tuple[BaseDetectionRule, ...] = tuple(
+            sorted(custom_rules or (), key=lambda r: r.rule_id)
+        )
+        self._rules: Tuple[BaseDetectionRule, ...] = foundational + sorted_custom
+
+    @property
+    def rules(self) -> Tuple[BaseDetectionRule, ...]:
+        """Immutable execution snapshot of detection rules."""
+        return self._rules
 
     def evaluate_all(self, events: List[CommonEvent]) -> List[DetectionResult]:
         """
@@ -366,7 +378,7 @@ class DetectionEngine:
         # Sort events by timestamp first to guarantee determinism
         sorted_events = sorted(events, key=lambda e: e.timestamp)
 
-        for rule in self.rules:
+        for rule in self._rules:
             new_dets = rule.evaluate(sorted_events, all_detections)
             all_detections.extend(new_dets)
 

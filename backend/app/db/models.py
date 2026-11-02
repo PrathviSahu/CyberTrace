@@ -346,3 +346,110 @@ class RuleValidationRunModel(Base):
         back_populates="validation_runs",
     )
 
+
+class RuleCodeAllocatorModel(Base):
+    """
+    Atomic sequential rule code allocator (Phase 6.3C).
+    Guarantees serialized, collision-free allocation of canonical rule codes (e.g., CUST-001).
+    """
+    __tablename__ = "rule_code_allocators"
+
+    sequence_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    current_value: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class ActiveDetectionRuleModel(Base):
+    """
+    Active Production Detection Rule (Phase 6.3C).
+    Deployed from an approved DetectionRuleDraft.
+    Contains an immutable frozen compiled AST snapshot, versioning,
+    and lifecycle status (ACTIVE, DISABLED, DEPRECATED).
+    Enforces restrictive foreign keys to preserve audit evidence lineage.
+    """
+    __tablename__ = "active_detection_rules"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    rule_code: Mapped[str] = mapped_column(String(32), unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    severity: Mapped[str] = mapped_column(String(32), default="medium", nullable=False)
+    mitre_attack_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    mitre_tactic: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    source_draft_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("detection_rule_drafts.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    source_draft_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    validation_run_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("rule_validation_runs.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    query_definition: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="ACTIVE", nullable=False, index=True)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    approved_by: Mapped[str] = mapped_column(String(128), nullable=False)
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    activated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    deactivated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    source_draft: Mapped["DetectionRuleDraftModel"] = sa_relationship(
+        "DetectionRuleDraftModel",
+        foreign_keys=[source_draft_id],
+    )
+    validation_run: Mapped["RuleValidationRunModel"] = sa_relationship(
+        "RuleValidationRunModel",
+        foreign_keys=[validation_run_id],
+    )
+
+
+class RuleAuditEntryModel(Base):
+    """
+    Append-Only Rule Lifecycle Audit Ledger (Phase 6.3C).
+    Records all state transitions across candidate drafts and active production rules.
+    Stores full before/after snapshots, caller-supplied attribution, justification,
+    and explicit governance warnings.
+    """
+    __tablename__ = "rule_audit_ledger"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    target_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    actor: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )
+    justification: Mapped[str] = mapped_column(Text, nullable=False)
+    state_before: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    state_after: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    demo_override_flag: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    security_warning: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
