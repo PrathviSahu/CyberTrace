@@ -88,34 +88,38 @@ flowchart TD
 
 ---
 
-### Feature 2: Dark SOC Frontend Shell & Design System (Phase 4.1)
+### Feature 2: Refined Warm Graphite SOC Shell & Design System (Phase 4.1)
 - **Problem Solved:** Delivers the visual identity, navigation layout, responsive shell, and typography of an enterprise-grade dark SOC command center.
 - **User Workflow:** Analyst logs in or opens CyberTrace; navigates seamlessly between Command, Intelligence, Engineering, Environment, and Administration via collapsible sidebar.
-- **Frontend Screens:** Global Application Shell, Header (Search, Time Range, Notifications), Sidebar, Navigation Routing.
+- **Frontend Screens:** Global Application Shell, Header (Search, Time Range, Notifications), Sidebar, Navigation Routing, Command Centre.
 - **Backend Services:** `/api/v1/health`, `/api/v1/overview/stats`.
 - **Database Changes:** None.
 - **API Contracts:** Standard JSON response for health and overview counters.
 - **Security Requirements:** Zero external CDN dependencies; all assets packaged locally.
 - **Acceptance Criteria:**
-  - Midnight Navy / Deep Graphite aesthetic adhering to `UI_DESIGN_SYSTEM.md`.
-  - Responsive layout (collapsible sidebar, responsive table containers).
+  - Warm Graphite & Restrained Bronze aesthetic (`#111315`, `#1D2125`, `#B58A61`, Inter + JetBrains Mono) adhering to `UI_DESIGN_SYSTEM.md`.
+  - Responsive layout (content-sized incident queue, tablet-adapted stacked layout below 1280px).
   - Global search (`⌘K`) hotkey listener functional.
+- **Status:** **Completed & Verified.**
 - **Complexity:** Medium (2 days).
 
 ---
 
-### Feature 3: Interactive Three-Panel Incident Workspace & Attack Graph (Phase 4.2)
-- **Problem Solved:** Solves alert fatigue and fragmented data by displaying incident metadata, interactive attack graph, and AI findings side-by-side with interactive evidence citations.
+### Feature 3: Interactive Three-Panel Incident Workspace & Dagre Attack Graph (Phase 4.2)
+- **Problem Solved:** Solves alert fatigue and fragmented data by displaying incident metadata, interactive hierarchical attack graph, and AI findings side-by-side with interactive evidence citations.
 - **User Workflow:** Analyst clicks an incident $\to$ inspects chronological timeline $\to$ navigates attack graph $\to$ clicks "Investigate" $\to$ watches Qwen 3.8 27B execute tool rounds $\to$ clicks `[evt_001]` citation to open exact raw evidence drawer.
-- **Frontend Screens:** Incident Detail View (`/incidents/:id`), Interactive Attack Graph Canvas (React Flow), Evidence Drawer Modal.
-- **Backend Services:** `GET /api/v1/incidents/{id}`, `GET /api/v1/incidents/{id}/graph`, `POST /api/v1/incidents/{id}/investigate`.
+- **Frontend Screens:** Incident Detail View (`/incidents/:id`), Interactive Attack Graph Canvas (React Flow + `@dagrejs/dagre`), Evidence Drawer Modal, Entity Inspector.
+- **Backend Services:** `GET /api/v1/incidents/{id}`, `GET /api/v1/incidents/{id}/graph`, `POST /api/v1/incidents/{id}/investigate`, `PATCH /api/v1/incidents/{id}/status`.
 - **Database Changes:** `ai_investigations` table stores graph node coordinates if customized.
 - **API Contracts:** `IncidentGraphResponse` returning nodes (`user`, `host`, `ip`, `detection`) and edges (`observed`, `correlated`, `inferred`).
 - **Security Requirements:** Event payloads rendered in Evidence Drawer are sanitized; no arbitrary script execution.
 - **Acceptance Criteria:**
+  - Dagre automatic hierarchical DAG layout (`LR` and `TB` directions) with deterministic node placement.
+  - Dark custom node cards with zero white outlines or glowing halos.
   - Clicking any evidence citation pill highlights timeline and graph node.
   - Edges visually distinguish observed telemetry from engine correlation and model inference.
-  - AI findings display observed facts, hypotheses, unknowns, and recommended actions.
+  - AI findings display observed facts, hypotheses, unknowns, and human-approved actions.
+- **Status:** **Completed & Verified.**
 - **Complexity:** High (3 days).
 
 ---
@@ -131,6 +135,7 @@ flowchart TD
 - **Acceptance Criteria:**
   - Precision, Recall, and $F_1$ calculated with mathematical correctness from known ground-truth events.
   - Side-by-side rule comparison highlighting missed detections.
+- **Status:** **Completed & Verified.**
 - **Complexity:** High (3 days).
 
 ---
@@ -146,13 +151,33 @@ flowchart TD
 - **Acceptance Criteria:**
   - Graceful fallback when DeepSeek is unconfigured or rate-limited.
   - Side-by-side benchmark table comparing Qwen and DeepSeek on citation accuracy and latency.
+- **Status:** **Completed & Verified.**
 - **Complexity:** Medium (2 days).
 
 ---
 
-### Feature 6: Threat Hunting Studio (Phase 6.1)
+### Feature 6: Asset & Identity Intelligence (Phase 6.1 — Completed & Verified)
+- **Problem Solved:** Security telemetry lacks aggregated asset and user attribution, forcing analysts to manually correlate IP addresses and hostnames across raw logs.
+- **User Workflow:** Backend derives an observed asset and identity inventory directly from ingested `security_events` with canonical grouping, distinct event metrics, and detection/incident counts.
+- **Frontend Screens:** Asset Inventory Table (`/assets`), Identity Intelligence Directory (`/identities`).
+- **Backend Services:** `AssetRepository`, `IdentityRepository`, REST endpoints `/api/v1/assets` and `/api/v1/identities`.
+- **Database Changes:** Zero migrations; zero new tables (derived dynamically from `security_events`, `detections`, and `incident_entities`).
+- **API Contracts:** `GET /api/v1/assets`, `GET /api/v1/assets/{asset_type}/{asset_value}`, `GET /api/v1/identities`, `GET /api/v1/identities/{username}`.
+- **Security & Integrity Requirements:**
+  - Strict canonical case normalization (`UPPER(TRIM(hostname))` and `LOWER(TRIM(username))`).
+  - Database-level global pagination before LIMIT/OFFSET.
+  - Entity namespace isolation prevents prefix collisions (e.g., `SRV-APP` does not match `SRV-APP-01`).
+  - Provenance marked strictly as `observed_telemetry`.
+- **Acceptance Criteria & Verification:**
+  - 21 unit/integration tests passing (95/95 total backend suite).
+  - Zero data mutation from GET endpoints.
+- **Status:** **Completed & Verified.**
+
+---
+
+### Feature 7: Threat Hunting Studio & Safe Query Engine (Phase 6.2)
 - **Problem Solved:** Analysts need to proactively hunt for emerging threats across historical telemetry without complex SQL syntax or security risks.
-- **User Workflow:** Analyst opens Threat Hunting $\to$ constructs filter pills (`user == svc_deploy AND bytes_out > 10MB`) $\to$ executes hunt $\to$ reviews virtualized event table $\to$ selects 5 events $\to$ clicks "Create Incident from Selection".
+- **User Workflow:** Analyst opens Threat Hunting $\to$ constructs filter pills (`user == svc_deploy AND bytes_out > 10MB`) $\to$ executes hunt $\to$ reviews virtualized event table $\to$ selects events $\to$ clicks "Create Incident from Selection".
 - **Frontend Screens:** Threat Hunting Studio (`/hunting`), Saved Searches Drawer.
 - **Backend Services:** `ThreatHuntingService`, parameterized query builder.
 - **Database Changes:** `saved_hunt_queries` table.
@@ -165,18 +190,14 @@ flowchart TD
 
 ---
 
-### Feature 7: Asset & Identity Intelligence (Phase 6.2)
-- **Problem Solved:** Security alerts lack context regarding which machine is affected, who owns it, and whether it represents critical infrastructure.
-- **User Workflow:** Analyst clicks on host `SRV-APP-01` anywhere in the UI $\to$ opens Asset Context Drawer showing criticality (Tier 1 Crown Jewel), owner, IP history, and associated past incidents.
-- **Frontend Screens:** Asset Inventory Table (`/assets`), Identity Intelligence Directory (`/identities`), Asset Context Drawer.
-- **Backend Services:** `AssetDirectoryService`, `IdentityContextService`.
-- **Database Changes:** `asset_inventory`, `identity_profiles` tables.
-- **API Contracts:** `GET /api/v1/assets`, `GET /api/v1/identities/{username}`.
-- **Security Requirements:** No fictitious data generation; all risk scores and observed entities derived from actual telemetry.
-- **Acceptance Criteria:**
-  - Asset criticality tiers clearly badged.
-  - Displays accurate last-seen timestamps and linked active incidents.
-- **Complexity:** Medium (2 days).
+### Feature 8: Frontend Asset, Identity & Threat Hunting Integration (Phase 6.3)
+- **Problem Solved:** Connects existing dark SOC frontend views to Phase 6.1 & 6.2 backend APIs, replacing mock fixtures with observed telemetry.
+- **Frontend Screens:** `AssetInventory.tsx`, `ThreatHunting.tsx`, `DataProvenanceBadge.tsx`.
+- **Key Deliverables:**
+  - Extend `DataProvenance` union type in `frontend/src/types/index.ts` to include `"observed_telemetry"`.
+  - Update `DataProvenanceBadge.tsx` to render `"observed_telemetry"` using neutral styling (never defaulting to Demo Benchmark).
+  - Wire live API fetch hooks into `AssetInventory.tsx`.
+- **Complexity:** Low-Medium (1 day).
 
 ---
 

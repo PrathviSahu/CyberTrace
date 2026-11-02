@@ -1,213 +1,236 @@
 # CyberTrace — UI Design System & Component Specification
-## Premium Dark SOC Command Centre Aesthetic
+## Refined Warm Graphite & Restrained Bronze SOC Command Centre Aesthetic
 
 ---
 
-## 1. Visual Theme & Design Language
+## 1. Visual Theme & Design Philosophy
 
-CyberTrace is engineered with a **professional, dark Security Operations Centre (SOC) command aesthetic**, inspired by industry-leading security platforms (SentinelX, Group-IB, Threatdefence). It rejects generic SaaS dashboard templates, brightly colored cartoon cards, and gratuitous neon glow, delivering instead a high-density, high-legibility interface optimized for prolonged analyst focus.
+CyberTrace is engineered with a **refined, professional Security Operations Centre (SOC) command aesthetic**. It decisively rejects the noisy, oversaturated "cyberpunk" tropes of generic AI-generated dashboards—specifically eliminating bright cyan borders on every card, purple/blue glowing gradients, neon animations, and fluorescent green buttons.
+
+Instead, CyberTrace implements a disciplined, high-density, high-legibility interface built on **Warm Graphite, Cool Slate, and a Restrained Warm Bronze accent**, optimized for 12-hour analyst shifts and prolonged cognitive focus.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        CYBERTRACE DARK SOC PALETTE                     │
+│                   CYBERTRACE WARM GRAPHITE & BRONZE PALETTE            │
 ├────────────────────────────────┬───────────────────────────────────────┤
-│ Surface Background (Base)      │ Deep Graphite: #080C14                │
-│ Surface Panel (Elevated 1)     │ Midnight Navy: #0E1626                │
-│ Surface Card / Active (Elev 2) │ Slate Obsidian: #162035               │
-│ Subtle Structural Border       │ Muted Indigo Border: rgba(99,102,241,0.18) │
-│ Primary Brand Accent           │ Restrained Cyan/Teal: #06B6D4         │
-│ Secondary Analytic Accent      │ Deep Indigo: #6366F1                  │
-│ Severity Critical / High Alert │ Crimson Red: #EF4444 (bg: #2B1218)    │
-│ Severity High / Warning        │ Amber Orange: #F59E0B (bg: #281D0D)   │
-│ Severity Medium / Caution      │ Topaz Yellow: #EAB308 (bg: #24210B)   │
-│ Severity Low / Informational   │ Sky Blue: #38BDF8 (bg: #0D2338)       │
-│ System Health / Normal State   │ Emerald Green: #10B981 (bg: #0C281E)  │
+│ Canvas / App Background        │ Deep Warm Graphite: #111315           │
+│ Sidebar Navigation             │ Dark Charcoal Slate: #191C1F          │
+│ Main Panel Surface             │ Base Surface: #1D2125                 │
+│ Elevated Card / Modal Surface  │ Elevated Surface: #24282C             │
+│ Structural Border              │ Crisp Graphite Border: #30363C        │
+│ Primary Brand Accent           │ Restrained Warm Bronze: #B58A61       │
+│ Navigation Selection Surface   │ Warm Dark Bronze Tint: #2B2722        │
+│ Severity Critical / High Alert │ Crimson Red: #E06C68 (bg: #2D1817)    │
+│ Severity High / Warning        │ Amber Bronze: #D99A54 (bg: #2B1D12)   │
+│ Severity Medium / Caution      │ Topaz Ochre: #C9B86B (bg: #2A2714)    │
+│ Severity Low / Informational   │ Sage Teal: #76A58B (bg: #15261D)      │
+│ Neutral / System Info          │ Slate Muted: #8A94A0 (bg: #1E2328)    │
 └────────────────────────────────┴───────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Design Tokens
+## 2. Design Tokens & Variables
 
-### 2.1 Color Tokens
+### 2.1 CSS Custom Properties
 ```css
 :root {
-  /* Surface Layers */
-  --color-bg-base: #080c14;
-  --color-bg-surface-1: #0e1626;
-  --color-bg-surface-2: #162035;
-  --color-bg-surface-hover: #1e2c47;
-  --color-bg-surface-active: #253759;
+  /* Surfaces & Canvas */
+  --color-canvas: #111315;
+  --color-sidebar: #191c1f;
+  --color-surface: #1d2125;
+  --color-elevated: #24282c;
+  --color-active: #2b2722;
+  --color-hover: #22272c;
 
   /* Borders & Dividers */
-  --color-border-subtle: rgba(255, 255, 255, 0.07);
-  --color-border-focus: rgba(6, 182, 212, 0.6);
-  --color-border-accent: rgba(99, 102, 241, 0.35);
+  --color-border: #30363c;
+  --color-border-subtle: #24292e;
+  --color-border-accent: #b58a61;
 
   /* Typography */
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
-  --color-text-code: #38bdf8;
+  --color-text-primary: #e9ecef;
+  --color-text-secondary: #a0a7ae;
+  --color-text-muted: #737d87;
+  --color-text-code: #d99a54;
 
-  /* Accents */
-  --color-accent-cyan: #06b6d4;
-  --color-accent-indigo: #6366f1;
+  /* Primary Accent: Restrained Warm Bronze */
+  --color-accent-bronze: #b58a61;
+  --color-accent-bronze-hover: #c69d75;
+  --color-accent-bronze-subtle: rgba(181, 138, 97, 0.12);
 
-  /* Severities */
-  --color-severity-critical: #ef4444;
-  --color-severity-high: #f59e0b;
-  --color-severity-medium: #eab308;
-  --color-severity-low: #38bdf8;
-  --color-status-healthy: #10b981;
+  /* Security Severity Spectrum */
+  --color-severity-critical: #e06c68;
+  --color-severity-critical-bg: #2d1817;
+  --color-severity-high: #d99a54;
+  --color-severity-high-bg: #2b1d12;
+  --color-severity-medium: #c9b86b;
+  --color-severity-medium-bg: #2a2714;
+  --color-severity-low: #76a58b;
+  --color-severity-low-bg: #15261d;
+  --color-severity-info: #8a94a0;
+  --color-severity-info-bg: #1e2328;
 }
 ```
 
-### 2.2 Typography Scale
-- **UI Fonts:** `Inter`, `Geist`, or `-apple-system, BlinkMacSystemFont, sans-serif`.
-- **Monospace Code/Log Fonts:** `JetBrains Mono`, `Fira Code`, or `ui-monospace`.
+### 2.2 Typography Scale & Font Pairing Rules
 
-| Token | Size | Line Height | Weight | Usage |
-| :--- | :---: | :---: | :---: | :--- |
-| `text-display` | 24px | 32px | 700 | Primary Workspace Headers, Attack Stage Titles |
-| `text-h1` | 20px | 28px | 600 | Modal Headers, Section Titles |
-| `text-h2` | 16px | 24px | 600 | Panel Titles, Metric Card Labels |
-| `text-body` | 14px | 20px | 400 | General Content, Investigation Findings |
-| `text-body-sm`| 13px | 18px | 400 | Table Rows, Sidebar Links, Tooltips |
-| `text-caption`| 11px | 16px | 500 | Metadata Badges, Graph Edge Tags, Timestamps |
-| `text-mono` | 12px | 18px | 400 | Event IDs (`evt_...`), IP Addresses, SHA-256 Hashes |
+CyberTrace enforces a strict separation between **UI Prose/Labels** and **Technical Telemetry Data**:
 
-### 2.3 Elevation & Structural Shadows
-- Cards and panels utilize a refined **1px border** (`var(--color-border-subtle)`) with minimal, crisp drop shadows:
-  - `elevation-card`: `0 2px 8px 0 rgba(0, 0, 0, 0.45)`
-  - `elevation-modal`: `0 8px 32px 0 rgba(0, 0, 0, 0.75)`
-  - `elevation-drawer`: `-4px 0 24px 0 rgba(0, 0, 0, 0.65)`
+1. **Primary Interface Font:** `Inter`, `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`.
+   - Used for: Workspace headers, panel titles, narrative summaries, table headers, buttons, navigation links, and analytical findings.
+   - Weights: Regular (`400`), Medium (`500`), Semi-bold (`600`), Bold (`700`).
+2. **Monospace Telemetry Font:** `JetBrains Mono`, `ui-monospace, "SF Mono", Menlo, Consolas, monospace`.
+   - **Strictly reserved for telemetry values:** Event IDs (`evt_...`), Incident IDs (`INC-...`), Detection IDs (`DET-...`), IPv4/IPv6 addresses, SHA-256 hashes, timestamps, and raw JSON logs.
+   - **Never used for:** General UI labels, buttons, or paragraph copy (preventing the "cramped terminal emulator" fatigue).
 
----
-
-## 3. Application Layout & Shell Architecture
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ TOP HEADER: [Logo] CYBERTRACE  [Workspace: Default SOC ▼]  [Search ⌘K]  [Time Range ▼]  [Model: Qwen ▼] [Bell] [User] │
-├──────────────┬─────────────────────────────────────────────────────────────────────────────────────────┤
-│ LEFT NAV     │ MAIN WORKSPACE VIEWPORT                                                                 │
-│              │                                                                                         │
-│ COMMAND      │  ┌───────────────────────┐ ┌───────────────────────┐ ┌──────────────────────────────┐   │
-│ • Overview   │  │ Open Incidents: 24   │ │ Critical Alerts: 06 │ │ Monitored Assets: 148        │   │
-│ • Alerts     │  │ [Live Telemetry]      │ │ [Live Telemetry]     │ │ [Live Telemetry]             │   │
-│ • Incidents  │  └───────────────────────┘ └───────────────────────┘ └──────────────────────────────┘   │
-│ • Cases      │                                                                                         │
-│              │  ┌──────────────────────────────────────────────┐ ┌──────────────────────────────────┐  │
-│ INTEL        │  │ Incident Severity Distribution (Donut / Bar) │ │ Ingestion Rate & Health (Chart)  │  │
-│ • Hunting    │  └──────────────────────────────────────────────┘ └──────────────────────────────────┘  │
-│ • Graph      │                                                                                         │
-│ • Threat In  │  ┌───────────────────────────────────────────────────────────────────────────────────┐  │
-│              │  │ Active Incident Feed / Priority Triage Table                                      │  │
-│ ENGIN.       │  │ ID        Title                      Severity  Status   Entities   Last Seen       │  │
-│ • Rules      │  │ INC-001   Credential Stuffing Burst  CRITICAL  OPEN     3 hosts    2 mins ago      │  │
-│ • ThreatLab  │  └───────────────────────────────────────────────────────────────────────────────────┘  │
-│              │                                                                                         │
-│ ENVIRON.     │                                                                                         │
-│ • Assets     │                                                                                         │
-│ • Identities │                                                                                         │
-│ • Integrat.  │                                                                                         │
-│              │                                                                                         │
-│ ADMIN.       │                                                                                         │
-│ • Audit Logs │                                                                                         │
-│ • Settings   │                                                                                         │
-└──────────────┴─────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 3.1 Five-Group Navigation Hierarchy
-1. **Command:**
-   - `Overview`: Threat metrics, severity distribution, ingestion health, analyst activity.
-   - `Alert Inbox`: Stream of raw detections awaiting analyst triage.
-   - `Incidents`: Correlated security incidents with correlation keys.
-   - `Cases`: Formal investigation cases, SLAs, and assignments.
-2. **Intelligence:**
-   - `Threat Hunting`: Structured multi-filter search builder.
-   - `Attack Graph`: Enterprise-wide entity connection explorer.
-   - `Threat Intelligence`: IOC registry, feed provenance, and matching engine.
-3. **Engineering:**
-   - `Detection Rules`: Detection-as-code repository and Sigma subset editor.
-   - `ThreatLab`: Scenario replay harness, precision/recall evaluator.
-   - `Model Evaluation`: Benchmark comparisons between Qwen and DeepSeek.
-4. **Environment:**
-   - `Assets`: Host, server, and gateway inventory with criticality tiers.
-   - `Identities`: User and service account profiles with risk scores.
-   - `Integrations`: OCSF import/export and log source connector settings.
-5. **Administration:**
-   - `Audit Logs`: Tamper-evident ledger of all user actions.
-   - `Settings`: Tenant configuration, API keys, and LLM redaction policies.
+| Token | Size | Line Height | Weight | Font Family | Usage |
+| :--- | :---: | :---: | :---: | :--- | :--- |
+| `text-display` | 22px | 28px | 600 | Inter | Primary Workspace Headers, Screen Titles |
+| `text-h1` | 18px | 24px | 600 | Inter | Section Headers, Modal Titles |
+| `text-h2` | 14px | 20px | 600 | Inter | Panel Headers, Metric Card Labels |
+| `text-body` | 13px | 18px | 400 | Inter | General Findings, Investigation Dossier |
+| `text-body-sm` | 12px | 16px | 400 | Inter | Table Content, Sidebar Links, Tooltips |
+| `text-caption` | 11px | 14px | 500 | Inter | Metadata Tags, Subtext, Form Help Text |
+| `text-mono` | 12px | 16px | 400 | JetBrains Mono | Event IDs, IP Addresses, Hashes, Timestamps |
+| `text-mono-xs` | 11px | 14px | 400 | JetBrains Mono | Inlined Node Identifiers, Port Numbers |
 
 ---
 
-## 4. Screen-by-Screen Layout Specifications
+## 3. Layout Architecture & Structural Hierarchy
 
-### 4.1 Incident Investigation Workspace (Three-Panel Layout)
-The flagship investigation interface:
+### 3.1 Global Application Shell
+The interface consists of a fixed-width left navigation sidebar (`240px` expanded, `64px` collapsed), a top operational status bar (`48px` height), and a flexible central workspace viewport.
 
 ```
-┌─────────────────────────┬──────────────────────────────────────────┬────────────────────────────────────────┐
-│ PANEL 1: INCIDENT DOSSIER│ PANEL 2: INTERACTIVE ATTACK GRAPH        │ PANEL 3: AI INVESTIGATION REPORT       │
-│ (Width: 320px)          │ (Flexible Width: Center)                 │ (Width: 420px)                         │
-├─────────────────────────┼──────────────────────────────────────────┼────────────────────────────────────────┤
-│ • INC-001               │ • React Flow Visualization Canvas        │ • Model: Qwen 3.8 27B [Switch ▼]       │
-│ • Severity: CRITICAL    │ • Nodes:                                 │ • Status: Completed (3 tool calls)     │
-│ • Status: Open          │   [User: svc_deploy]                     │ • Execution: 1.42s | ID: req_001       │
-│ • Owner: Sarah (Tier 2) │       │ (Observed - Solid)               │                                        │
-│                         │       ▼                                  │ ── Observed Facts ───────────────────  │
-│ ── Chronological        │   [Host: SRV-APP-01]                     │ • Rapid failed logons followed by      │
-│    Timeline ─────────── │       │ (Correlated - Dashed)            │   successful authentication.           │
-│ 08:00:00 [Logon Failure]│       ▼                                  │   Citations: [evt_001] [evt_002]       │
-│   user: svc_deploy      │   [Detection: DET-004 Exfiltration]      │ • 150 MB outbound data egress to       │
-│ 08:02:00 [Logon Success]│       │ (Observed - Solid)               │   external destination 203.0.113.99.   │
-│   src: 198.51.100.44    │       ▼                                  │   Citations: [evt_003]                 │
-│ 08:05:00 [Network Egress│   [IP: 203.0.113.99]                     │                                        │
-│   bytes: 150,000,000    │                                          │ ── Hypotheses ───────────────────────  │
-│                         │ [Controls: Zoom, Pan, Blast Radius Toggle│ • Credential compromise followed by    │
-│ [Event Filter: All ▼]   │  Edge Filter: Observed / Correlated]     │   immediate data staging & egress.     │
-│                         │                                          │   Confidence: HIGH | Caveats: 1        │
-│                         │ ── Selected Event Drawer (Bottom Slide) ─│                                        │
-│                         │ ID: evt_003 | Action: network_connect    │ ── Recommended Actions ──────────────  │
-│                         │ Src: 192.168.1.50 -> Dst: 203.0.113.99   │ • Revoke session tokens for svc_deploy │
-│                         │ Bytes: 150 MB | Port: 443 | Proto: tcp   │   [Requires Human Approval]            │
-│                         │ [View Raw Sanitized Payload]             │ • Block 203.0.113.99 at firewall       │
-│                         │                                          │   [Approve Action] [Reject Action]     │
-└─────────────────────────┴──────────────────────────────────────────┴────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ TOP BAR: [Logo] CYBERTRACE  [Backend Connected ●]  [Search ⌘K]  [Time Range: 24h]  [Live Telemetry]   │
+├──────────────┬────────────────────────────────────────────────────────────────────────────────────────┤
+│ LEFT NAV     │ MAIN COMMAND WORKSPACE                                                                 │
+│              │                                                                                        │
+│ COMMAND      │  ┌───────────────────────┐ ┌──────────────────────┐ ┌───────────────────────────────┐  │
+│ • Overview   │  │ Open Incidents: 1     │ │ Critical Alerts: 1   │ │ Monitored Assets: 14          │  │
+│ • Alerts     │  │ [Live Telemetry]      │ │ [Live Telemetry]     │ │ [Live Telemetry]              │  │
+│ • Incidents  │  └───────────────────────┘ └──────────────────────┘ └───────────────────────────────┘  │
+│              │                                                                                        │
+│ INTEL        │  ┌─────────────────────────────────────────────────┐ ┌──────────────────────────────┐  │
+│ • Hunting    │  │ Active Incident Queue (Content-Sized Height)    │ │ Detection Activity Feed      │  │
+│ • Graph      │  │ Desktop (≥1280px): 7-Column Full Table          │ │ Stream of triggering rules,  │  │
+│ • Threat In  │  │ Tablet (<1280px): Compact Stacked Row Layout    │ │ MITRE tactics, entities      │  │
+│              │  └─────────────────────────────────────────────────┘ └──────────────────────────────┘  │
+│ ENGIN.       │                                                                                        │
+│ • Rules      │  ┌──────────────────────────────────────────────────────────────────────────────────┐  │
+│ • ThreatLab  │  │ Recent Observed Events (Persisted Telemetry Timeline)                            │  │
+│              │  │ Real chronological log sequence with event IDs, IPs, categories, and timestamps   │  │
+│ ENVIRON.     │  └──────────────────────────────────────────────────────────────────────────────────┘  │
+│ • Assets     │                                                                                        │
+│ • Identities │                                                                                        │
+└──────────────┴────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Interactive Citation Linking:** Clicking any citation pill (`[evt_001]`) highlights the corresponding event on the Timeline (Panel 1), centers the graph on the associated node (Panel 2), and opens the Evidence Drawer with normalized CES attributes.
+### 3.2 Responsive Breakpoint Architecture
 
-### 4.2 CyberTrace ThreatLab (Replay & Benchmark Studio)
-- **Top Bar:** Scenario Selector dropdown (`Multi-Stage Account Takeover`, `Ransomware Staging`, `Benign Noise`), Replay Button (`▶ Start Replay Run`), Rule Filter toggle (`All Rules`, `Modified Rules Only`).
-- **Main Viewport:**
-  - **Confusion Matrix Tile:**
-    - True Positives (Green): 8
-    - False Positives (Yellow): 0
-    - False Negatives (Red): 1
-    - Precision: 100.0% | Recall: 88.9% | $F_1$ Score: 94.1%
-  - **Replay Timeline:** Chronological step-by-step event replay visualizing which rule fired on which exact event.
-  - **Missed Detection Inspector:** Highlights events that matched known attack techniques but were missed by current active rules, with recommended rule improvements.
+CyberTrace adapts between ultra-wide desktop monitors, standard laptops, and SOC tablet devices:
 
-### 4.3 Threat Hunting Studio
-- **Query Filter Builder:** Horizontal condition builder:
-  `[+ Add Condition] [Field: user_identity ▼] [Operator: equals ▼] [Value: svc_deploy] [AND] [Field: bytes_out ▼] [Operator: > ▼] [Value: 10000000]`
-- **Action Buttons:** `[Execute Hunt ⌘Enter]`, `[Save Query]`, `[Export CSV]`, `[Create Incident from Selection]`.
-- **Telemetry Results Grid:** High-density, virtualized table with sortable columns, copyable cell pills, and right-click context menu (`Filter by this value`, `Pivot on Entity`).
+| Breakpoint | Width | Incident Table Behavior | Recent Events Behavior | Detection Feed |
+| :--- | :--- | :--- | :--- | :--- |
+| **Desktop Ultra** | $\ge 1920\text{px}$ | 7-column tabular grid, side-by-side with detection feed. | Full multi-column grid view. | Full vertical feed alongside queue. |
+| **Desktop Standard** | $1280\text{px} - 1919\text{px}$ | 7-column tabular grid, truncated summary, unclipped actions. | Full multi-column grid view. | Side-by-side with queue. |
+| **Tablet / Compact** | $< 1280\text{px}$ (`1024\text{px}`) | **Switches to Stacked Incident Row Layout** (`block xl:hidden`): ID & severity on top, summary underneath, entity/detection metrics, status pill, and fully visible `Investigate` button. | Compact wrapped event cards preventing table overflow. | Stacks cleanly below the incident queue. |
 
 ---
 
-## 5. Reusable Component Catalog
+## 4. Attack Graph & Layout Engine Specification
 
-| Component Name | Description & Props | Visual Styling |
+CyberTrace utilizes **`@xyflow/react`** combined with **`@dagrejs/dagre`** to render deterministic, professional hierarchical Directed Acyclic Graphs (DAGs) representing multi-stage attack scenarios.
+
+### 4.1 Dagre Layout Specifications
+- **Layout Direction:** Left-to-Right (`rankdir: 'LR'`) by default, toggleable to Top-to-Bottom (`rankdir: 'TB'`).
+- **Node Separation:** `nodesep: 48px` (horizontal spacing between parallel entity nodes).
+- **Rank Separation:** `ranksep: 80px` (vertical/horizontal spacing between sequential attack stages).
+- **Edge Routing:** Smooth step or orthogonal bezier curves with directional arrowheads.
+
+### 4.2 Dark Custom Node Styling
+All attack graph nodes adhere strictly to the Warm Graphite design tokens:
+- **Node Container:** Background `#1D2125`, 1px solid border `#30363C`, border-radius `8px`, crisp drop shadow `0 2px 8px rgba(0, 0, 0, 0.45)`.
+- **Zero White Borders:** Default ReactFlow white node borders, blue outlines, and bright handles are completely overridden via CSS (`.react-flow__node { border: none !important; }`).
+- **Connection Handles:** Subtle graphite dots (`#737D87`), zero glowing halos.
+- **Node Types & Category Indicators:**
+  - `user`: Identity icon, User Account badge.
+  - `host`: Server/Endpoint icon, Hostname and IP badge.
+  - `ip`: Network Globe icon, observed IP address.
+  - `detection`: Shield Alert icon, severity-tinted pill (`#E06C68` for Critical, `#D99A54` for High).
+- **Interactive Inspector:** Clicking any node or edge opens the **Entity Inspector Slide-Over Drawer**, displaying observed attributes, first/last seen timestamps, and direct links to related events.
+
+### 4.3 Edge Taxonomy & Visual Rules
+- **`observed` (Solid Edge):** Direct observed telemetry (e.g., Host A connected to IP B). Stroke: `#737D87`, stroke-width: 1.5px.
+- **`correlated` (Dashed Edge):** Engine-correlated relationship (e.g., Shared compromised identity within 15-minute window). Stroke: `#B58A61`, stroke-dasharray: `5 5`.
+- **`inferred` (Dotted Edge):** AI or heuristic hypothesis (e.g., Potential lateral movement pathway). Stroke: `#8A94A0`, stroke-dasharray: `2 4`.
+
+---
+
+## 5. Screen-by-Screen Layout Specifications
+
+### 5.1 Command Centre (`/`)
+- **Metric Strip (4 Tiles):**
+  1. *Open Incidents:* Active correlated incidents count.
+  2. *Critical Alerts:* Count of active critical-severity detections.
+  3. *Monitored Assets:* Derived distinct assets from ingested telemetry.
+  4. *System Status:* Ingestion health & model status (`Backend Connected`).
+- **Content-Sized Incident Queue:**
+  - Avoids artificial height stretching; dynamically sizes to the number of active incidents.
+  - Desktop ($\ge 1280\text{px}$): 7-column table (`ID`, `Title`, `Severity`, `Status`, `Entities`, `Last Seen`, `Actions`).
+  - Tablet ($< 1280\text{px}$): Stacked card layout with zero horizontal clipping.
+- **Detection Activity Feed:**
+  - Displays recent detection firings with MITRE ATT&CK tactic tags, triggering rule ID, and triggering entity.
+- **Recent Observed Events Timeline:**
+  - Direct display of actual ingested events from database (`security_events`).
+  - Provides instant forensic context without having to navigate away from the overview.
+
+### 5.2 Incident Investigation Workspace (`/incidents/:id`)
+- **Three-Panel Collaborative Architecture:**
+  - **Panel 1 (Incident Dossier, Left 340px):**
+    - Metadata overview (Incident ID, Severity, Status dropdown, Correlation Key).
+    - Chronological event timeline with collapsible event details.
+    - Entities list with observed counts.
+  - **Panel 2 (Adversary Attack Graph, Center Flexible):**
+    - Dagre-powered hierarchical DAG canvas.
+    - Controls: Zoom in/out, Fit View, Re-layout (`LR` / `TB`), Blast Radius toggle.
+    - Entity Inspector drawer on node click.
+  - **Panel 3 (AI Investigation & Evidence Findings, Right 440px):**
+    - Model selector (`qwen-3.8-27b`, `deepseek-v4.1-flash`, or `auto`).
+    - Executive summary with execution time and tool call count.
+    - Verified Observed Facts with clickable `[evt_...]` citation pills.
+    - Hypotheses with confidence levels and analytical caveats.
+    - Gated Recommended Actions (`requires_human_approval: true`) with "Approve Action" / "Reject Action" buttons.
+
+### 5.3 Detection Rules Studio (`/rules`)
+- **Two-Panel Split Layout:**
+  - **Left Panel (Rule Registry):** Filterable rule catalog with severity pills, active toggles, and MITRE technique tags.
+  - **Right Panel (Rule Definition & Sigma Subset):** Read-only and editable rule specifications adhering to the supported Sigma-compatible subset.
+
+### 5.4 Asset & Identity Directory (`/assets`, `/identities`)
+- **Tabular Entity Overview:**
+  - Hostnames, asset types (Server, Workstation, Gateway), criticality tiers (`tier_1` to `tier_4`), and observed IP addresses.
+  - Real telemetry provenance tag (`[Observed Telemetry]`).
+  - Strict absence of simulated or hardcoded values.
+
+### 5.5 ThreatLab Studio (`/threatlab`)
+- **Scenario Replay Harness:**
+  - Select benchmark scenarios (`Multi-Stage Credential Stuffing`, `Ransomware Staging`, etc.).
+  - Run in-memory replay against detection rules.
+  - Mathematical confusion matrix display: True Positives, False Positives, False Negatives, Precision, Recall, and $F_1$-score.
+
+---
+
+## 6. Reusable Component Catalog
+
+| Component Name | Description & Props | Visual Specification |
 | :--- | :--- | :--- |
-| `<SeverityBadge>` | Displays severity level (`critical`, `high`, `medium`, `low`, `info`). | Solid dark background with matching border and high-contrast text. |
-| `<EvidenceCitation>` | Clickable event ID pill (`evt_...`). Props: `eventId`, `onClick`. | Cyan/indigo border, monospace font, subtle hover highlight. |
-| `<AttackGraphCanvas>` | React Flow canvas displaying nodes and labeled edges. | Dark grid background (`#080c14`), styled node cards, directional arrows. |
-| `<DataProvenanceBadge>` | Distinguishes `Live Telemetry` from `Synthetic Benchmark`. | Muted purple border, subtle uppercase label. |
-| `<PlaybookApprovalModal>` | Gating dialog requiring rationale before recording simulated containment. | Obsidian card, red/amber accent, explicit confirm button. |
-| `<TimelineEntry>` | Chronological event or detection node in incident dossier. | Vertical connector line, icon representing category (auth, network, proc). |
-| `<MetricTile>` | Summary KPI card. Props: `title`, `value`, `delta`, `provenance`. | Rounded 8px, 1px subtle border, glowing indicator dot. |
-
+| `<SeverityBadge>` | Displays severity level (`critical`, `high`, `medium`, `low`, `info`). | Solid dark tinted background (`#2D1817`), matching 1px border, high-contrast text (`#E06C68`). |
+| `<EvidenceCitation>` | Clickable event ID pill (`evt_...`). Props: `eventId`, `onClick`. | JetBrains Mono font, bronze border `#B58A61`, subtle hover highlight, opens Evidence Drawer. |
+| `<AttackGraphCanvas>` | React Flow + Dagre canvas displaying nodes and labeled edges. | Graphite canvas `#111315`, dark node surfaces `#1D2125`, no white outlines, directional arrows. |
+| `<DataProvenanceBadge>` | Distinguishes `Live Telemetry`, `Observed Telemetry`, and `Synthetic Benchmark`. | Muted border, uppercase label, strictly honest data provenance indicator. |
+| `<HumanApprovalModal>` | Gating dialog requiring rationale before recording simulated containment. | Elevated surface `#24282C`, warm bronze accent, explicit Confirm / Cancel buttons. |
+| `<TimelineEntry>` | Chronological event or detection node in incident dossier. | Vertical graphite connector `#30363C`, category icon (auth, network, proc), monospace timestamp. |
+| `<MetricTile>` | Summary KPI card. Props: `title`, `value`, `delta`, `provenance`. | Rounded 8px, `#1D2125` surface, `#30363C` border, bronze accent subtext. |

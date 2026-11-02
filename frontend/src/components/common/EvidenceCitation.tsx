@@ -22,19 +22,18 @@ export const EvidenceCitation: React.FC<EvidenceCitationProps> = ({
         onClick?.(eventId);
       }}
       title={`Inspect verified underlying log event ${eventId}`}
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-[11px] font-medium transition-all cursor-pointer ${
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-[11px] font-medium transition-colors cursor-pointer ${
         isVerified
-          ? "bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-900/80 hover:border-cyan-400 hover:shadow-[0_0_8px_rgba(6,182,212,0.3)]"
-          : "bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700"
+          ? "bg-[#24282C] text-[#B58A61] border border-[#30363C] hover:border-[#B58A61]/40 hover:bg-[#2B2722]"
+          : "bg-[#24282C] text-[#A0A7AE] border border-[#30363C] hover:bg-[#1D2125]"
       } ${className}`}
     >
       {isVerified ? (
-        <CheckCircle2 className="w-3 h-3 text-cyan-400 shrink-0" />
+        <CheckCircle2 className="w-3 h-3 text-[#76A58B] shrink-0" />
       ) : (
-        <ExternalLink className="w-3 h-3 text-slate-400 shrink-0" />
+        <ExternalLink className="w-3 h-3 text-[#737D87] shrink-0" />
       )}
       <span>{eventId}</span>
     </button>
   );
 };
-

@@ -5,15 +5,10 @@ import {
   ShieldAlert,
   Inbox,
   Crosshair,
-  Share2,
-  Grid,
   FlaskConical,
   FileCode2,
   Activity,
   Server,
-  Users,
-  Settings,
-  ScrollText,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -26,57 +21,42 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
   const navGroups = [
     {
-      label: "COMMAND",
+      label: "Operations",
       items: [
         { to: "/", label: "Command Centre", icon: <LayoutDashboard className="w-4 h-4" /> },
-        { to: "/incidents/INC-001", label: "Incident Workspace", icon: <ShieldAlert className="w-4 h-4" />, badge: "ACTIVE" },
+        { to: "/incidents/INC-001", label: "Incident Workspace", icon: <ShieldAlert className="w-4 h-4" />, badge: "Active" },
         { to: "/alerts", label: "Alert Inbox", icon: <Inbox className="w-4 h-4" /> },
       ],
     },
     {
-      label: "INTELLIGENCE",
+      label: "Investigation",
       items: [
         { to: "/hunting", label: "Threat Hunting", icon: <Crosshair className="w-4 h-4" /> },
-        { to: "/entities", label: "Attack Graph", icon: <Share2 className="w-4 h-4" /> },
-        { to: "/mitre", label: "MITRE ATT&CK", icon: <Grid className="w-4 h-4" /> },
+        { to: "/assets", label: "Assets & Identities", icon: <Server className="w-4 h-4" /> },
       ],
     },
     {
-      label: "ENGINEERING",
+      label: "Detection & Evaluation",
       items: [
-        { to: "/threatlab", label: "ThreatLab Benchmark", icon: <FlaskConical className="w-4 h-4" />, badge: "F1 1.0" },
         { to: "/rules", label: "Detection Rules", icon: <FileCode2 className="w-4 h-4" /> },
-        { to: "/pipelines", label: "Log Pipelines", icon: <Activity className="w-4 h-4" /> },
-      ],
-    },
-    {
-      label: "ENVIRONMENT",
-      items: [
-        { to: "/assets", label: "Asset Inventory", icon: <Server className="w-4 h-4" /> },
-        { to: "/identities", label: "Identities", icon: <Users className="w-4 h-4" /> },
-      ],
-    },
-    {
-      label: "ADMINISTRATION",
-      items: [
-        { to: "/settings", label: "System Config", icon: <Settings className="w-4 h-4" /> },
-        { to: "/audit", label: "Audit Logs", icon: <ScrollText className="w-4 h-4" /> },
+        { to: "/threatlab", label: "ThreatLab Benchmark", icon: <FlaskConical className="w-4 h-4" />, badge: "Eval" },
+        { to: "/telemetry", label: "Telemetry & Pipelines", icon: <Activity className="w-4 h-4" /> },
       ],
     },
   ];
 
   return (
     <aside
-      className={`border-r border-border-subtle bg-bg-surface1 flex flex-col transition-all duration-300 select-none z-30 shrink-0 ${
-        collapsed ? "w-16" : "w-60"
+      className={`border-r border-[#30363C] bg-[#191C1F] flex flex-col transition-all duration-200 select-none z-30 shrink-0 ${
+        collapsed ? "w-16" : "w-[244px]"
       }`}
     >
       {/* Navigation Groups */}
-      <div className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
         {navGroups.map((group) => (
           <div key={group.label} className="space-y-1">
             {!collapsed && (
-              <div className="px-3 text-[10px] font-mono uppercase font-bold tracking-wider text-slate-500">
+              <div className="px-3 text-[11px] font-medium text-[#737D87] mb-1.5">
                 {group.label}
               </div>
             )}
@@ -86,10 +66,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
                 to={item.to}
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-mono transition-colors relative group ${
+                  `flex items-center gap-3 px-3 py-2 text-xs font-medium transition-colors relative group ${
                     isActive
-                      ? "bg-cyan-500/15 text-cyan-300 font-semibold border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.15)]"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-bg-hover border border-transparent"
+                      ? "bg-[#2B2722] text-[#E9ECEF] border-l-2 border-[#B58A61] rounded-r-md"
+                      : "text-[#A0A7AE] hover:text-[#E9ECEF] hover:bg-[#24282C] rounded-md border-l-2 border-transparent"
                   } ${collapsed ? "justify-center" : ""}`
                 }
               >
@@ -98,7 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
                   <div className="flex-1 flex items-center justify-between truncate">
                     <span className="truncate">{item.label}</span>
                     {item.badge && (
-                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950/60 text-cyan-400 border border-cyan-500/30 font-bold ml-1.5">
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#24282C] text-[#B58A61] font-medium ml-1.5">
                         {item.badge}
                       </span>
                     )}
@@ -111,14 +91,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
       </div>
 
       {/* Collapse Toggle Footer */}
-      <div className="p-2 border-t border-border-subtle bg-bg-surface2/40">
+      <div className="p-3 border-t border-[#30363C] bg-[#191C1F]">
         <button
           onClick={onToggleCollapse}
-          className="w-full flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-white hover:bg-bg-hover transition-colors text-xs font-mono"
+          className="w-full flex items-center justify-center p-1.5 rounded-md text-[#737D87] hover:text-[#E9ECEF] hover:bg-[#24282C] transition-colors text-xs cursor-pointer"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          {!collapsed && <span className="ml-2 text-[11px]">Collapse View</span>}
         </button>
       </div>
     </aside>
