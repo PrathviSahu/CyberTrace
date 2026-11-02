@@ -88,34 +88,38 @@ flowchart TD
 
 ---
 
-### Feature 2: Dark SOC Frontend Shell & Design System (Phase 4.1)
+### Feature 2: Refined Warm Graphite SOC Shell & Design System (Phase 4.1)
 - **Problem Solved:** Delivers the visual identity, navigation layout, responsive shell, and typography of an enterprise-grade dark SOC command center.
 - **User Workflow:** Analyst logs in or opens CyberTrace; navigates seamlessly between Command, Intelligence, Engineering, Environment, and Administration via collapsible sidebar.
-- **Frontend Screens:** Global Application Shell, Header (Search, Time Range, Notifications), Sidebar, Navigation Routing.
+- **Frontend Screens:** Global Application Shell, Header (Search, Time Range, Notifications), Sidebar, Navigation Routing, Command Centre.
 - **Backend Services:** `/api/v1/health`, `/api/v1/overview/stats`.
 - **Database Changes:** None.
 - **API Contracts:** Standard JSON response for health and overview counters.
 - **Security Requirements:** Zero external CDN dependencies; all assets packaged locally.
 - **Acceptance Criteria:**
-  - Midnight Navy / Deep Graphite aesthetic adhering to `UI_DESIGN_SYSTEM.md`.
-  - Responsive layout (collapsible sidebar, responsive table containers).
+  - Warm Graphite & Restrained Bronze aesthetic (`#111315`, `#1D2125`, `#B58A61`, Inter + JetBrains Mono) adhering to `UI_DESIGN_SYSTEM.md`.
+  - Responsive layout (content-sized incident queue, tablet-adapted stacked layout below 1280px).
   - Global search (`⌘K`) hotkey listener functional.
+- **Status:** **Completed & Verified.**
 - **Complexity:** Medium (2 days).
 
 ---
 
-### Feature 3: Interactive Three-Panel Incident Workspace & Attack Graph (Phase 4.2)
-- **Problem Solved:** Solves alert fatigue and fragmented data by displaying incident metadata, interactive attack graph, and AI findings side-by-side with interactive evidence citations.
+### Feature 3: Interactive Three-Panel Incident Workspace & Dagre Attack Graph (Phase 4.2)
+- **Problem Solved:** Solves alert fatigue and fragmented data by displaying incident metadata, interactive hierarchical attack graph, and AI findings side-by-side with interactive evidence citations.
 - **User Workflow:** Analyst clicks an incident $\to$ inspects chronological timeline $\to$ navigates attack graph $\to$ clicks "Investigate" $\to$ watches Qwen 3.8 27B execute tool rounds $\to$ clicks `[evt_001]` citation to open exact raw evidence drawer.
-- **Frontend Screens:** Incident Detail View (`/incidents/:id`), Interactive Attack Graph Canvas (React Flow), Evidence Drawer Modal.
-- **Backend Services:** `GET /api/v1/incidents/{id}`, `GET /api/v1/incidents/{id}/graph`, `POST /api/v1/incidents/{id}/investigate`.
+- **Frontend Screens:** Incident Detail View (`/incidents/:id`), Interactive Attack Graph Canvas (React Flow + `@dagrejs/dagre`), Evidence Drawer Modal, Entity Inspector.
+- **Backend Services:** `GET /api/v1/incidents/{id}`, `GET /api/v1/incidents/{id}/graph`, `POST /api/v1/incidents/{id}/investigate`, `PATCH /api/v1/incidents/{id}/status`.
 - **Database Changes:** `ai_investigations` table stores graph node coordinates if customized.
 - **API Contracts:** `IncidentGraphResponse` returning nodes (`user`, `host`, `ip`, `detection`) and edges (`observed`, `correlated`, `inferred`).
 - **Security Requirements:** Event payloads rendered in Evidence Drawer are sanitized; no arbitrary script execution.
 - **Acceptance Criteria:**
+  - Dagre automatic hierarchical DAG layout (`LR` and `TB` directions) with deterministic node placement.
+  - Dark custom node cards with zero white outlines or glowing halos.
   - Clicking any evidence citation pill highlights timeline and graph node.
   - Edges visually distinguish observed telemetry from engine correlation and model inference.
-  - AI findings display observed facts, hypotheses, unknowns, and recommended actions.
+  - AI findings display observed facts, hypotheses, unknowns, and human-approved actions.
+- **Status:** **Completed & Verified.**
 - **Complexity:** High (3 days).
 
 ---
@@ -131,6 +135,7 @@ flowchart TD
 - **Acceptance Criteria:**
   - Precision, Recall, and $F_1$ calculated with mathematical correctness from known ground-truth events.
   - Side-by-side rule comparison highlighting missed detections.
+- **Status:** **Completed & Verified.**
 - **Complexity:** High (3 days).
 
 ---
@@ -146,37 +151,62 @@ flowchart TD
 - **Acceptance Criteria:**
   - Graceful fallback when DeepSeek is unconfigured or rate-limited.
   - Side-by-side benchmark table comparing Qwen and DeepSeek on citation accuracy and latency.
+- **Status:** **Completed & Verified.**
 - **Complexity:** Medium (2 days).
 
 ---
 
-### Feature 6: Threat Hunting Studio (Phase 6.1)
-- **Problem Solved:** Analysts need to proactively hunt for emerging threats across historical telemetry without complex SQL syntax or security risks.
-- **User Workflow:** Analyst opens Threat Hunting $\to$ constructs filter pills (`user == svc_deploy AND bytes_out > 10MB`) $\to$ executes hunt $\to$ reviews virtualized event table $\to$ selects 5 events $\to$ clicks "Create Incident from Selection".
-- **Frontend Screens:** Threat Hunting Studio (`/hunting`), Saved Searches Drawer.
-- **Backend Services:** `ThreatHuntingService`, parameterized query builder.
-- **Database Changes:** `saved_hunt_queries` table.
-- **API Contracts:** `POST /api/v1/hunting/query`, `GET /api/v1/hunting/saved`.
-- **Security Requirements:** Zero raw SQL injection vectors; queries compiled strictly via SQLAlchemy parameterized expressions.
-- **Acceptance Criteria:**
-  - High-performance query execution over 10,000+ events within 200ms.
-  - One-click incident generation from selected rows.
-- **Complexity:** Medium (2 days).
+### Feature 6: Asset & Identity Intelligence (Phase 6.1 — Completed & Verified)
+- **Problem Solved:** Security telemetry lacks aggregated asset and user attribution, forcing analysts to manually correlate IP addresses and hostnames across raw logs.
+- **User Workflow:** Backend derives an observed asset and identity inventory directly from ingested `security_events` with canonical grouping, distinct event metrics, and detection/incident counts.
+- **Frontend Screens:** Asset Inventory Table (`/assets`), Identity Intelligence Directory (`/identities`).
+- **Backend Services:** `AssetRepository`, `IdentityRepository`, REST endpoints `/api/v1/assets` and `/api/v1/identities`.
+- **Database Changes:** Zero migrations; zero new tables (derived dynamically from `security_events`, `detections`, and `incident_entities`).
+- **API Contracts:** `GET /api/v1/assets`, `GET /api/v1/assets/{asset_type}/{asset_value}`, `GET /api/v1/identities`, `GET /api/v1/identities/{username}`.
+- **Security & Integrity Requirements:**
+  - Strict canonical case normalization (`UPPER(TRIM(hostname))` and `LOWER(TRIM(username))`).
+  - Database-level global pagination before LIMIT/OFFSET.
+  - Entity namespace isolation prevents prefix collisions (e.g., `SRV-APP` does not match `SRV-APP-01`).
+  - Provenance marked strictly as `observed_telemetry`.
+- **Acceptance Criteria & Verification:**
+  - 21 unit/integration tests passing (95/95 total backend suite).
+  - Zero data mutation from GET endpoints.
+- **Status:** **Completed & Verified.**
 
 ---
 
-### Feature 7: Asset & Identity Intelligence (Phase 6.2)
-- **Problem Solved:** Security alerts lack context regarding which machine is affected, who owns it, and whether it represents critical infrastructure.
-- **User Workflow:** Analyst clicks on host `SRV-APP-01` anywhere in the UI $\to$ opens Asset Context Drawer showing criticality (Tier 1 Crown Jewel), owner, IP history, and associated past incidents.
-- **Frontend Screens:** Asset Inventory Table (`/assets`), Identity Intelligence Directory (`/identities`), Asset Context Drawer.
-- **Backend Services:** `AssetDirectoryService`, `IdentityContextService`.
-- **Database Changes:** `asset_inventory`, `identity_profiles` tables.
-- **API Contracts:** `GET /api/v1/assets`, `GET /api/v1/identities/{username}`.
-- **Security Requirements:** No fictitious data generation; all risk scores and observed entities derived from actual telemetry.
-- **Acceptance Criteria:**
-  - Asset criticality tiers clearly badged.
-  - Displays accurate last-seen timestamps and linked active incidents.
-- **Complexity:** Medium (2 days).
+### Feature 7: Threat Hunting Studio & Safe Query Engine (Phase 6.2 — Completed & Verified)
+- **Problem Solved:** Analysts need to proactively hunt for emerging threats across historical telemetry without complex SQL syntax, N+1 query overhead, or SQL injection vectors.
+- **User Workflow:** Analyst opens Threat Hunting $\to$ toggles Boolean match logic (`AND` / `OR`) $\to$ builds multi-predicate condition rows (`username == svc_deploy`, `bytes_out >= 10MB`, `action != logon_failure`) $\to$ selects UTC time boundary or preset $\to$ executes hunt $\to$ reviews paginated, server-sorted telemetry $\to$ opens Evidence Drawer with batched detection and incident correlations.
+- **Frontend Screens:** Threat Hunting Studio (`/hunting`), Evidence Drawer (`EvidenceDrawer.tsx`), Data Provenance Badge (`DataProvenanceBadge.tsx`).
+- **Backend Services:** `HuntingRepository` (`backend/app/db/repositories/hunting_repo.py`), AST query compiler (`FilterGroup`, `FilterCondition`, `TimeRangeFilter`).
+- **API Contracts:** `POST /api/v1/hunting/query`.
+- **Security & Provenance Controls:**
+  - Zero raw SQL injection vectors; queries compiled strictly via parameterized SQLAlchemy column expressions.
+  - Strict integer validation rejecting booleans, floats, strings, negative bytes, and out-of-range ports ($0 \le \text{port} \le 65535$).
+  - Bounded AST depth ($\le 3$) and group conditions ($\le 20$).
+  - Constant $O(1)$ query complexity: maximum 4 SQL queries per request with zero N+1 scaling.
+  - Multi-tier provenance classification (`observed_telemetry`, `synthetic_benchmark`, `unknown`, `mixed`).
+  - Strict separation of cryptographic file checksums (SHA-256) from source authenticity.
+- **Acceptance Criteria & Verification:**
+  - 49 dedicated threat hunting tests passing (144/144 full backend pytest suite).
+  - 20 frontend component tests passing (20/20 vitest suite).
+  - Headless browser-to-database integration verified with live response times $< 30\text{ ms}$.
+- **Status:** **Completed & Verified.**
+
+---
+
+### Feature 8: Saved Threat Hunts & Proactive Detection Creation (Phase 6.3)
+- **Problem Solved:** Decouples query persistence from detection rules, enabling analysts to bookmark high-fidelity hunt queries, manage query versions with optimistic concurrency locks, and safely re-execute hunts before promoting validated AST predicates into candidate detection rules.
+- **Sub-phases:**
+  - **Phase 6.3A: Saved Threat Hunts & Query Persistence:** `SavedHuntModel`, atomic optimistic concurrency control (HTTP 409 Conflict), lifecycle archive protection (HTTP 409 Conflict), independent duplication, and query re-execution via the unified hunting compiler. **(Completed & Verified: 166/166 backend tests passing, clean Alembic migration `1da2a69a7cf3`).**
+  - **Phase 6.3B: Detection Rule Drafts & Pre-flight Validation:** Promotion of saved hunt AST to immutable rule draft; pre-flight simulation against historical telemetry and ThreatLab benchmarks; exact SQL/in-memory parity; version-safe stale validation guards. **(Completed & Verified: 186/186 backend tests passing, clean Alembic migration `1e6fea4c0cc9`).**
+  - **Phase 6.3C: Four-Eyes Approval Workflow & Promotion to Active Detection Rule:** Dual-analyst review gate, immutable audit ledger, and live in-memory AST matcher execution alongside `DET-001` through `DET-004`. *(Pending review).*
+- **Frontend Screens:** Saved Searches Drawer, Rule Conversion Modal.
+- **Backend Services:** `SavedHuntRepository`, `HuntingRepository`, `RuleDraftRepository`, in-memory AST evaluator (`ast_evaluator.py`).
+- **Database Changes:** `saved_hunts`, `detection_rule_drafts`, `rule_validation_runs` tables (Alembic `1e6fea4c0cc9`).
+- **API Contracts:** `GET/POST /api/v1/hunting/saved`, `PUT/DELETE /api/v1/hunting/saved/{id}`, `POST /api/v1/hunting/saved/{id}/execute`, `POST /api/v1/hunting/saved/{id}/duplicate`, `GET/POST /api/v1/rules/drafts`, `GET/PUT/DELETE /api/v1/rules/drafts/{id}`, `POST /api/v1/rules/drafts/{id}/validate`, `GET /api/v1/rules/drafts/{id}/validations`.
+- **Complexity:** Medium.
 
 ---
 

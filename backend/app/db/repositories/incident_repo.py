@@ -169,3 +169,14 @@ class IncidentRepository:
             "events": events,
             "entities": incident.entities,
         }
+
+    async def update_status(self, incident_id: str, new_status: str) -> Optional[IncidentModel]:
+        """Update triage status for an incident (open, in_progress, contained, resolved, closed)."""
+        stmt = select(IncidentModel).where(IncidentModel.id == incident_id)
+        incident = (await self.session.execute(stmt)).scalar_one_or_none()
+        if incident:
+            incident.status = new_status
+            incident.updated_at = datetime.now(timezone.utc)
+            await self.session.commit()
+            return incident
+        return None

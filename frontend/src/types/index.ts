@@ -1,6 +1,21 @@
 export type Severity = "critical" | "high" | "medium" | "low" | "informational";
 export type IncidentStatus = "open" | "in_progress" | "contained" | "resolved" | "closed";
-export type DataProvenance = "live_telemetry" | "synthetic_benchmark" | "calculated_evaluation";
+export type DataProvenance = "live_telemetry" | "synthetic_benchmark" | "calculated_evaluation" | "observed_telemetry" | "unknown" | "mixed";
+
+export interface RelatedDetectionSummary {
+  id: string;
+  rule_id: string;
+  rule_name: string;
+  severity: Severity;
+  explanation: string;
+}
+
+export interface RelatedIncidentSummary {
+  id: string;
+  title: string;
+  severity: Severity;
+  status: IncidentStatus;
+}
 
 export interface CommonEvent {
   id: string;
@@ -16,9 +31,80 @@ export interface CommonEvent {
   destination_port?: number;
   hostname?: string;
   bytes_out?: number;
+  bytes_in?: number;
+  protocol?: string;
   process_name?: string;
   process_command_line?: string;
   source_file_hash?: string;
+  provenance?: DataProvenance | string;
+  raw_payload?: Record<string, any>;
+  related_detections?: RelatedDetectionSummary[];
+  related_incidents?: RelatedIncidentSummary[];
+}
+
+export type FilterField =
+  | "timestamp"
+  | "hostname"
+  | "username"
+  | "source_ip"
+  | "destination_ip"
+  | "category"
+  | "action"
+  | "severity"
+  | "bytes_out"
+  | "bytes_in"
+  | "source_port"
+  | "destination_port"
+  | "protocol"
+  | "process_name";
+
+export type FilterOperator =
+  | "eq"
+  | "neq"
+  | "contains"
+  | "starts_with"
+  | "in"
+  | "gt"
+  | "gte"
+  | "lt"
+  | "lte";
+
+export interface FilterCondition {
+  field: FilterField;
+  operator: FilterOperator;
+  value: any;
+}
+
+export interface FilterGroup {
+  logic: "AND" | "OR";
+  conditions: FilterCondition[];
+  groups?: FilterGroup[];
+}
+
+export interface TimeRangeFilter {
+  start?: string;
+  end?: string;
+}
+
+export interface ThreatHuntQueryRequest {
+  time_range?: TimeRangeFilter;
+  filter_group?: FilterGroup;
+  sort_by?: FilterField;
+  sort_order?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+}
+
+export interface HuntedEventItem extends CommonEvent {}
+
+export interface ThreatHuntQueryResponse {
+  items: HuntedEventItem[];
+  total: number;
+  limit: number;
+  offset: number;
+  query_duration_ms: number;
+  applied_filter_count: number;
+  provenance: DataProvenance;
 }
 
 export interface Detection {
@@ -140,11 +226,64 @@ export interface OverviewMetrics {
   openIncidents: number;
   criticalAlerts: number;
   monitoredAssets: number;
-  detectionCoveragePercent: number;
-  eventsIngested24h: number;
-  meanTimeToTriageMin: number;
+  detectionCoveragePercent: number | null;
+  eventsIngested24h?: number;
+  eventsIngestedSample: number;
+  totalDetectionsFired: number;
+  meanTimeToTriageMin: number | null;
   aiInvestigationsCount: number;
-  providerStatus: "healthy" | "degraded" | "fallback";
+  providerStatus: "healthy" | "degraded" | "offline";
+  provenance: DataProvenance;
+}
+
+export interface TriggeredRule {
+  rule_id: string;
+  rule_name: string;
+  severity: string;
+}
+
+export interface AssetSummary {
+  asset_type: "hostname" | "ip";
+  asset_value: string;
+  first_seen?: string | null;
+  last_seen?: string | null;
+  event_count: number;
+  source_event_count?: number | null;
+  destination_event_count?: number | null;
+  detection_count: number;
+  incident_count: number;
+  provenance: DataProvenance;
+}
+
+export interface AssetDetail extends AssetSummary {
+  triggered_rules: TriggeredRule[];
+  incident_ids: string[];
+}
+
+export interface AssetListResponse {
+  assets: AssetSummary[];
+  total: number;
+  provenance: DataProvenance;
+}
+
+export interface IdentitySummary {
+  username: string;
+  first_seen?: string | null;
+  last_seen?: string | null;
+  event_count: number;
+  detection_count: number;
+  incident_count: number;
+  provenance: DataProvenance;
+}
+
+export interface IdentityDetail extends IdentitySummary {
+  triggered_rules: TriggeredRule[];
+  incident_ids: string[];
+}
+
+export interface IdentityListResponse {
+  identities: IdentitySummary[];
+  total: number;
   provenance: DataProvenance;
 }
 
@@ -158,4 +297,45 @@ export interface AssetRecord {
   last_seen: string;
   active_incident_count: number;
   risk_score: number;
+  provenance?: DataProvenance;
+}
+
+export interface ConfusionMatrix {
+  true_positives: number;
+  false_positives: number;
+  false_negatives: number;
+  true_negatives: number;
+  precision: number;
+  recall: number;
+  f1_score: number;
+}
+
+export interface ThreatLabScenario {
+  scenario_id: string;
+  name: string;
+  description: string;
+  event_count: number;
+  expected_detection_count: number;
+  category: string;
+  mitre_techniques: string[];
+}
+
+export interface ScenarioReplayResult {
+  scenario_id: string;
+  scenario_name: string;
+  events_processed: number;
+  detections_fired_count: number;
+  detections: Array<{
+    rule_id: string;
+    rule_name: string;
+    severity: string;
+    entity_value: string;
+    detected_at: string;
+    explanation: string;
+    triggering_event_ids: string[];
+  }>;
+  confusion_matrix: ConfusionMatrix;
+  duration_ms: number;
+  status: string;
+  evaluation_notes: string[];
 }

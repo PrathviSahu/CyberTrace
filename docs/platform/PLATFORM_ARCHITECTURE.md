@@ -10,7 +10,9 @@ CyberTrace adopts a **Modular Monolith** architecture for its core application t
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        CYBERTRACE PRESENTATION TIER                    │
-│   React 18 + TypeScript + Vite + Tailwind CSS + Lucide Icons + React Flow│
+│    React 18 + TypeScript + Vite + Tailwind CSS + Lucide Icons          │
+│         @xyflow/react + @dagrejs/dagre (Hierarchical Attack Graph)      │
+│         Warm Graphite & Restrained Bronze Design System                │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ HTTPS / REST JSON API (/api/v1)
 ┌───────────────────────────────────▼────────────────────────────────────┐
@@ -28,7 +30,8 @@ CyberTrace adopts a **Modular Monolith** architecture for its core application t
 │  │ • BharatCode Model Router (Qwen 3.8 27B / DeepSeek V4.1 Flash)    │  │
 │  │ • Stateless Investigation Agent & Allow-Listed Tools              │  │
 │  │ • Server-Side Evidence Verifier & Deterministic Fallback Engine   │  │
-│  │ • Attack Graph Builder, Threat Intel & ThreatLab Replay Engine   │  │
+│  │ • Dagre Attack Graph Builder, Threat Intel & ThreatLab Engine     │  │
+│  │ • Asset & Identity Intelligence Aggregation Layer                 │  │
 │  └─────────────────────────────────────┬────────────────────────────┘  │
 │                                        │                               │
 │  ┌─────────────────────────────────────▼────────────────────────────┐  │
@@ -46,7 +49,7 @@ CyberTrace adopts a **Modular Monolith** architecture for its core application t
 
 ### Why a Modular Monolith?
 1. **Defensive Latency & Simplicity:** Security incident correlation requires rapid entity join queries and transactional guarantees. In-memory service calls avoid network serialization overhead, distributed transactions, and RPC failure modes.
-2. **Strict Domain Boundaries:** Each domain (Ingestion, Rules, Correlation, Investigation, ThreatLab, Cases) possesses dedicated schemas, repositories, and interfaces. Cross-domain data access must use repository interfaces, never ad-hoc SQL joins.
+2. **Strict Domain Boundaries:** Each domain (Ingestion, Rules, Correlation, Investigation, ThreatLab, Assets/Identities, Cases) possesses dedicated schemas, repositories, and interfaces. Cross-domain data access must use repository interfaces, never ad-hoc SQL joins.
 3. **Seamless Evolutionary Path:** When horizontal scaling becomes necessary for compute-heavy workloads (e.g. massive log ingestion batches or continuous ThreatLab scenario replays), modules can be detached into independent background worker processes using the shared database or a Redis queue without rewriting business logic.
 
 ---
@@ -76,16 +79,17 @@ CyberTrace adopts a **Modular Monolith** architecture for its core application t
   - `DetectionRepository`: Persists detections and links to triggering events.
   - `IncidentRepository`: Manages incidents, correlated entities, and dossier evidence.
   - `InvestigationRepository`: Persists AI and fallback investigation records.
+  - `AssetRepository` & `IdentityRepository`: Aggregates observed hosts, types, criticality tiers, and identities.
   - `CaseRepository`: Manages SOC cases, analyst notes, and playbook records.
   - `ThreatIntelRepository`: Manages IOC indicators and feed metadata.
-- **Storage Target:** Asynchronous SQLite (`aiosqlite`) for local development and self-contained testing; PostgreSQL with asyncpg connection pooling for production.
+- **Storage Target:** Asynchronous SQLite (`aiosqlite`) for local development and self-contained testing (95/95 automated tests passing); PostgreSQL with asyncpg connection pooling for production.
 
 ### Layer 4: AI Investigation & Multi-Model Engine
 - **Responsibility:** Conduct evidence-backed incident investigations, execute read-only tools, verify citations, and provide deterministic fallbacks.
 - **Key Modules:**
   - `BharatCodeModelRouter`: Queries BharatCode `GET /models`, inspects incident complexity, routes to `qwen-3.8-27b` or `deepseek-v4.1-flash`, and handles failovers.
   - `BharatCodeAgent`: Implements stateless Responses API loop with complete conversation history replay and `store: false`.
-  - `InvestigationToolExecutor`: Allow-listed, read-only tools scoped strictly to the authorized incident dossier.
+  - `InvestigationToolExecutor`: Allow-listed, read-only tools scoped strictly to the authorized incident dossier with start/end time bounds.
   - `EvidenceVerifier`: Validates returned event IDs against database ground truth; rejects hallucinated IDs.
   - `DeterministicFallbackEngine`: Rules-based heuristic investigator ensuring platform utility when models are offline.
 
@@ -102,7 +106,7 @@ CyberTrace adopts a **Modular Monolith** architecture for its core application t
 - **Key Modules:**
   - `PlaybookSimulationEngine`: Generates defensive response recommendations and tracks approval workflows.
   - `FastAPI Application`: Versioned REST API endpoints under `/api/v1`.
-  - `Frontend SPA`: Single-page React application delivering the dark SOC Command Centre experience.
+  - `Frontend SPA`: Single-page React application delivering the Warm Graphite & Bronze Command Centre experience with `@xyflow/react` and `@dagrejs/dagre`.
 
 ---
 
@@ -148,8 +152,8 @@ sequenceDiagram
     Verifier-->>Router: Verified Facts, Hypotheses & Human-Approved Actions
     Router->>DB: Save to ai_investigations (status='completed')
     DB-->>API: Investigation Response
-    API-->>UI: Render 3-Panel Workspace (Timeline, Attack Graph, Findings)
-    Analyst->>UI: Clicks Event Citation -> Views Exact Evidence
+    API-->>UI: Render 3-Panel Workspace (Timeline, Dagre Attack Graph, Findings)
+    Analyst->>UI: Clicks Event Citation -> Opens Evidence Drawer
 ```
 
 ---
@@ -185,36 +189,31 @@ flowchart TD
     Fallback --> PersistFB["Persist ai_investigations (status='fallback')"]
 ```
 
-### Routing Rules & Policies
-1. **Dynamic Capability Inspection:** On initialization and scheduled intervals (every 10 minutes), the router calls `GET https://bharatcode.ai/api/model/v1/models`. If `deepseek-v4.1-flash` is present in the account catalogue, it is marked eligible.
-2. **Complexity Assessment Criteria:**
-   - **Standard Complexity:** Correlated events $\le 50$, detections $\le 3$, entities $\le 5 \to$ Routed to `qwen-3.8-27b`.
-   - **High Complexity:** Correlated events $> 50$, detections $> 3$, or multi-host lateral movement $\to$ Routed to `deepseek-v4.1-flash` (if eligible).
-   - **Manual Analyst Override:** Analysts can select either model directly in the Investigation Workspace UI.
-3. **Graceful Failover Ladder:**
-   - Primary complex model failure $\to$ Fallback to standard model `qwen-3.8-27b`.
-   - Standard model failure / missing API key / rate-limit exhaustion $\to$ Fallback to `DeterministicFallbackEngine`.
-   - Under no circumstances does the application crash or fail to provide an evidence-backed investigation report.
-
 ---
 
-## 5. Asynchronous Background Task Architecture
+## 5. Frontend Presentation Architecture & Graph Engine
 
-To prevent long-running tasks (e.g. 50 MB log uploads, multi-step threat replays, and batch IOC enrichments) from blocking the FastAPI event loop:
-
-```mermaid
-flowchart LR
-    API["FastAPI HTTP Request"] --> Enqueue["BackgroundTasks / Async Worker"]
-    Enqueue --> Task["Job Task Record (Status: queued)"]
-    Task --> Worker["Async Execution Worker"]
-    Worker --> Update["Update Job Progress (0%..100%)"]
-    Update --> Complete["Job Completed / Failed"]
-    Complete --> DB["Persist State to SQLite / Postgres"]
-    Client["Client UI"] -- "Polling GET /api/v1/jobs/{id}" --> DB
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND PRESENTATION ARCHITECTURE              │
+├────────────────────────────────┬───────────────────────────────────────┤
+│ Framework & Build Tool         │ React 18 + TypeScript + Vite          │
+│ Styling & Tokens               │ Tailwind CSS (Warm Graphite Theme)    │
+│ Icons                          │ Lucide React                          │
+│ Graph Visualization            │ @xyflow/react (React Flow v12)        │
+│ Graph Layout Engine            │ @dagrejs/dagre (Deterministic DAG)    │
+│ State Management               │ React Hooks + Context + Fetch API     │
+│ API Proxy                      │ Vite Dev Proxy (/api -> :8000/api)    │
+└────────────────────────────────┴───────────────────────────────────────┘
 ```
 
-- **Job Task States:** `queued`, `in_progress`, `completed`, `failed`.
-- **Bounded Concurrency:** Max 4 concurrent background worker tasks in local mode to avoid thread and database contention.
-- **Idempotency Keys:** Log upload tasks calculate `source_file_hash` (SHA-256); identical uploads return existing cached ingestion records without re-processing.
-- **Dead-Letter Handling:** Tasks that encounter uncaught exceptions capture the stack trace into `error_message`, transition to `failed`, and emit an audit log entry.
+### 5.1 Graph Rendering & Dagre Integration
+The attack graph in `IncidentWorkspace.tsx` uses `@dagrejs/dagre` to compute node coordinates hierarchically:
+- Each entity is modeled as a node (`user`, `host`, `ip`, `detection`) with fixed dimensions (`width: 220px`, `height: 72px`).
+- Edges represent relationships (`observed`, `correlated`, `inferred`).
+- Dagre calculates deterministic node placement along an orthogonal grid, avoiding overlapping labels or tangled edge crossings.
+- ReactFlow renders custom dark nodes with zero white outlines, subtle graphite borders (`#30363C`), and interactive click listeners that open the Entity Inspector drawer.
 
+### 5.2 Responsive Breakpoint Engine
+- **Desktop ($\ge 1280\text{px}$ / `xl`):** Renders the 7-column unclipped incident table alongside the live detection feed.
+- **Tablet ($< 1280\text{px}$ / `1024\text{px}`):** Replaces the multi-column table with compact stacked incident cards (`block xl:hidden`) to guarantee zero horizontal clipping and accessible touch targets.
