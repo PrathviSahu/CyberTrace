@@ -1234,7 +1234,7 @@ async def test_api_hunting_query_endpoint(db_session: AsyncSession):
             assert data["items"][0]["id"] == "evt_api_1"
             assert data["applied_filter_count"] == 1
             assert "query_duration_ms" in data
-            assert data["provenance"] == "observed_telemetry"
+            assert data["provenance"] == "unknown"
     finally:
         app.dependency_overrides.clear()
 
@@ -1279,13 +1279,22 @@ def test_classify_event_provenance_unit_rules():
     )
     assert res == "synthetic_benchmark"
 
-    # 2. Observed event with verified source attribution -> observed_telemetry
+    # 2. Observed event with verified server-side trusted context -> observed_telemetry
     res = classify_event_provenance(
-        raw_payload={"source_attribution": "edr_agent_host_01"},
+        raw_payload={},
         source_type="syslog",
         event_id="evt_02",
+        trusted_context={"authenticated": True, "collector_id": "edr_agent_host_01"},
     )
     assert res == "observed_telemetry"
+
+    # 2b. Untrusted client metadata without trusted server context -> strictly unknown
+    res_untrusted = classify_event_provenance(
+        raw_payload={"source_attribution": "edr_agent_host_01", "collector_id": "col_1", "verified_source": True},
+        source_type="syslog",
+        event_id="evt_02b",
+    )
+    assert res_untrusted == "unknown"
 
     # 3. Missing provenance / no source attribution -> unknown (even with any hash)
     res = classify_event_provenance(
@@ -1300,6 +1309,7 @@ def test_classify_event_provenance_unit_rules():
         raw_payload={"provenance": "observed_telemetry", "source_attribution": "corp_siem", "synthetic": True},
         source_type="syslog",
         event_id="evt_04",
+        trusted_context={"authenticated": True},
     )
     assert res == "synthetic_benchmark"
 
@@ -1393,10 +1403,10 @@ async def test_synthetic_event_with_valid_sha256_hash_is_not_observed(db_session
 
 
 @pytest.mark.asyncio
-async def test_observed_event_with_verified_source_attribution(db_session: AsyncSession):
+async def test_unverified_payload_attribution_resolves_to_unknown(db_session: AsyncSession):
     """
-    An event is classified as observed_telemetry ONLY when imported from an
-    identified, authorized telemetry source with verified source attribution.
+    Caller-supplied source attribution strings inside raw_payload cannot be authenticated
+    by the server and must resolve to 'unknown' rather than falsely claiming 'observed_telemetry'.
     """
     repo = HuntingRepository(db_session)
     t = datetime(2026, 11, 1, 12, 5, 0, tzinfo=timezone.utc)
@@ -1414,9 +1424,10 @@ async def test_observed_event_with_verified_source_attribution(db_session: Async
     assert res.total == 1
     item = res.items[0]
 
-    assert item.provenance == "observed_telemetry"
+    assert item.provenance == "unknown"
+    assert item.provenance != "observed_telemetry"
     assert item.source_file_hash == valid_sha256
-    assert res.provenance == "observed_telemetry"
+    assert res.provenance == "unknown"
 
 
 @pytest.mark.asyncio
@@ -1559,11 +1570,11 @@ async def test_provenance_database_persistence_and_api_serialization(db_session:
             assert data["total"] == 3
             item_map = {item["id"]: item for item in data["items"]}
 
-            assert item_map["evt_api_obs"]["provenance"] == "observed_telemetry"
+            assert item_map["evt_api_obs"]["provenance"] == "unknown"
             assert item_map["evt_api_synth"]["provenance"] == "synthetic_benchmark"
             assert item_map["evt_api_unk"]["provenance"] == "unknown"
 
-            # Mixed results are truthfully branded as 'mixed'
+            # Mixed results (synthetic benchmark + unknown) are truthfully branded as 'mixed'
             assert data["provenance"] == "mixed"
     finally:
         app.dependency_overrides.clear()

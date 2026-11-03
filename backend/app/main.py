@@ -174,6 +174,19 @@ async def upload_log_file(
     incidents = await service.process_and_correlate_events(events, source_file_hash=source_file_hash)
     detections_count = len(service.latest_detections)
 
+    # Truthfully determine aggregate provenance of uploaded telemetry
+    from app.db.repositories.hunting_repo import classify_event_provenance
+    distinct_provs = {
+        classify_event_provenance(ev.raw_payload, source_type=ev.source_format, event_id=ev.event_id)
+        for ev in events
+    }
+    if not distinct_provs:
+        upload_provenance = "unknown"
+    elif len(distinct_provs) == 1:
+        upload_provenance = next(iter(distinct_provs))
+    else:
+        upload_provenance = "mixed"
+
     return LogUploadResponse(
         filename=file.filename,
         detected_format=detected_format,
@@ -183,6 +196,7 @@ async def upload_log_file(
         detections_count=detections_count,
         incidents_count=len(incidents),
         status="success",
+        provenance=upload_provenance,
     )
 
 
@@ -194,6 +208,7 @@ async def list_events(
     source_ip: Optional[str] = None,
     session: AsyncSession = Depends(get_db_session),
 ):
+    from app.db.repositories.hunting_repo import classify_event_provenance
     repo = EventRepository(session)
     events, total = await repo.list_events(limit=limit, offset=offset, username=username, source_ip=source_ip)
     return [
@@ -210,6 +225,7 @@ async def list_events(
             "hostname": e.hostname,
             "bytes_out": e.bytes_out,
             "process_name": e.process_name,
+            "provenance": classify_event_provenance(e.raw_payload, source_type=e.source_type, event_id=e.id),
         }
         for e in events
     ]
@@ -868,6 +884,7 @@ async def list_incidents(
 ):
     repo = IncidentRepository(session)
     incidents = await repo.list_incidents(limit=limit, offset=offset, status=status_filter, severity=severity)
+    prov_map = await repo.get_incident_provenances([inc.id for inc in incidents])
     return [
         {
             "id": inc.id,
@@ -878,6 +895,7 @@ async def list_incidents(
             "status": inc.status,
             "first_seen": inc.first_seen.isoformat(),
             "last_seen": inc.last_seen.isoformat(),
+            "provenance": prov_map.get(inc.id, "unknown"),
             "entities": [
                 {
                     "entity_type": ent.entity_type,
@@ -897,6 +915,7 @@ async def get_incident(
     incident_id: str,
     session: AsyncSession = Depends(get_db_session),
 ):
+    from app.db.repositories.hunting_repo import classify_event_provenance
     repo = IncidentRepository(session)
     dossier = await repo.get_incident_evidence(incident_id)
     if not dossier:
@@ -913,6 +932,7 @@ async def get_incident(
             "status": inc.status,
             "first_seen": inc.first_seen.isoformat(),
             "last_seen": inc.last_seen.isoformat(),
+            "provenance": dossier.get("provenance", "unknown"),
         },
         "detections": [
             {
@@ -937,6 +957,7 @@ async def get_incident(
                 "destination_ip": e.destination_ip,
                 "hostname": e.hostname,
                 "bytes_out": e.bytes_out,
+                "provenance": classify_event_provenance(e.raw_payload, source_type=e.source_type, event_id=e.id),
             }
             for e in dossier["events"]
         ],

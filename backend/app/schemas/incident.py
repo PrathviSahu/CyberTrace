@@ -32,6 +32,10 @@ class IncidentSummaryResponse(BaseModel):
     last_seen: datetime
     created_at: datetime
     updated_at: datetime
+    provenance: str = Field(
+        default="unknown",
+        description="Aggregate dataset provenance of supporting evidence: 'observed_telemetry', 'synthetic_benchmark', 'unknown', or 'mixed'."
+    )
     entities: List[IncidentEntityResponse] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
@@ -53,4 +57,8 @@ class LogUploadResponse(BaseModel):
     detections_count: int
     incidents_count: int
     status: str = "success"
+    provenance: str = Field(
+        default="unknown",
+        description="Aggregate dataset provenance of uploaded telemetry: 'observed_telemetry', 'synthetic_benchmark', 'unknown', or 'mixed'."
+    )
 

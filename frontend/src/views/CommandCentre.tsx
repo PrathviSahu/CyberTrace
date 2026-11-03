@@ -87,7 +87,7 @@ export const CommandCentre: React.FC<CommandCentreProps> = ({ onOpenUpload }) =>
               Security Operations
             </h1>
             <DataProvenanceBadge
-              provenance={metrics?.provenance || "observed_telemetry"}
+              provenance={metrics?.provenance || "unknown"}
               size="sm"
             />
           </div>

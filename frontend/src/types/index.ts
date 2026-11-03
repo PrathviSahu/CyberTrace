@@ -339,3 +339,279 @@ export interface ScenarioReplayResult {
   status: string;
   evaluation_notes: string[];
 }
+
+// ---------------------------------------------------------------------------
+// Phase 6.3A / 6.4 — Saved Threat Hunts & Query Persistence Contracts
+// ---------------------------------------------------------------------------
+
+export interface SavedHuntQueryDefinition {
+  time_range?: TimeRangeFilter | null;
+  filter_group?: FilterGroup | null;
+  sort_by?: FilterField;
+  sort_order?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+}
+
+export interface SavedHuntCreate {
+  name: string;
+  description?: string | null;
+  tags?: string[];
+  query_definition: SavedHuntQueryDefinition;
+  created_by?: string;
+}
+
+export interface SavedHuntUpdate {
+  version: number;
+  name?: string;
+  description?: string | null;
+  tags?: string[];
+  query_definition?: SavedHuntQueryDefinition;
+  updated_by?: string;
+}
+
+export interface SavedHuntResponse {
+  id: string;
+  name: string;
+  description?: string | null;
+  tags: string[];
+  query_definition: SavedHuntQueryDefinition;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  version: number;
+  last_run_at?: string | null;
+  run_count: number;
+  is_archived: boolean;
+  author_attribution_note: string;
+}
+
+export interface SavedHuntListResponse {
+  items: SavedHuntResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SavedHuntExecuteRequest {
+  limit?: number;
+  offset?: number;
+  executed_by?: string;
+}
+
+export interface SavedHuntExecuteResponse {
+  hunt_id: string;
+  hunt_name: string;
+  executed_version: number;
+  executed_at: string;
+  run_count: number;
+  items: HuntedEventItem[];
+  total: number;
+  limit: number;
+  offset: number;
+  query_duration_ms: number;
+  applied_filter_count: number;
+  provenance: DataProvenance | string;
+}
+
+export interface SavedHuntDuplicateRequest {
+  name?: string;
+  created_by?: string;
+}
+
+// ===========================================================================
+// Section: Phase 6.4 Detection Rule Drafts, Validation & Governance Types
+// ===========================================================================
+
+export type DraftStatus = "DRAFT" | "VALIDATED" | "APPROVED" | "REJECTED" | "ARCHIVED";
+export type RuleSeverity = "low" | "medium" | "high" | "critical";
+export type ValidationScope = "all" | "historical_telemetry" | "threatlab_benchmarks";
+
+export interface DetectionRuleDraftCreate {
+  name: string;
+  description?: string;
+  severity?: RuleSeverity;
+  mitre_attack_id?: string;
+  mitre_tactic?: string;
+  source_hunt_id?: string;
+  query_definition?: SavedHuntQueryDefinition;
+  created_by?: string;
+}
+
+export interface DetectionRuleDraftUpdate {
+  version: number;
+  name?: string;
+  description?: string | null;
+  severity?: RuleSeverity;
+  mitre_attack_id?: string | null;
+  mitre_tactic?: string | null;
+  query_definition?: SavedHuntQueryDefinition;
+}
+
+export interface RuleValidationRunRequest {
+  target_scope?: ValidationScope;
+}
+
+export interface HistoricalTelemetryMetrics {
+  events_scanned: number;
+  matches_found: number;
+  observation_start?: string | null;
+  observation_end?: string | null;
+  observation_duration_days: number;
+  estimated_daily_alert_volume: number;
+  daily_volume_formula: string;
+  insufficient_history_warning: boolean;
+  provenance_breakdown: Record<string, number>;
+  sample_matched_event_ids: string[];
+}
+
+export interface ThreatLabScenarioResult {
+  scenario_id: string;
+  name: string;
+  category: string;
+  total_events: number;
+  matches_found: number;
+  classification: string;
+  is_benign_baseline_warning: boolean;
+  matched_event_ids: string[];
+}
+
+export interface ThreatLabMetrics {
+  scenarios_evaluated: number;
+  total_benchmark_events: number;
+  total_matches: number;
+  benign_baseline_matches: number;
+  has_benign_baseline_warning: boolean;
+  scenario_results: ThreatLabScenarioResult[];
+}
+
+export interface RuleValidationSummary {
+  validation_id: string;
+  draft_version: number;
+  run_at: string;
+  target_scope: string;
+  matches_found: number;
+  estimated_daily_alert_volume: number;
+  status: string;
+  is_stale: boolean;
+  has_benign_baseline_warning: boolean;
+}
+
+export interface RuleValidationReportResponse {
+  validation_id: string;
+  draft_id: string;
+  draft_version: number;
+  run_at: string;
+  target_scope: string;
+  duration_ms: number;
+  status: string;
+  error_message?: string | null;
+  is_stale: boolean;
+  draft_status_updated: boolean;
+  historical_metrics?: HistoricalTelemetryMetrics | null;
+  threatlab_metrics?: ThreatLabMetrics | null;
+  provenance_disclaimer: string;
+}
+
+export interface DetectionRuleDraftResponse {
+  id: string;
+  name: string;
+  description?: string | null;
+  severity: RuleSeverity;
+  mitre_attack_id?: string | null;
+  mitre_tactic?: string | null;
+  source_hunt_id?: string | null;
+  source_hunt_version?: number | null;
+  query_definition: SavedHuntQueryDefinition;
+  status: DraftStatus;
+  version: number;
+  created_by: string;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+  latest_validation?: RuleValidationSummary | null;
+  author_attribution_note: string;
+}
+
+export interface DetectionRuleDraftListResponse {
+  items: DetectionRuleDraftResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export type ActiveRuleStatus = "ACTIVE" | "DISABLED" | "DEPRECATED";
+
+export interface RuleDraftApprovalRequest {
+  draft_version: number;
+  approver_id: string;
+  justification: string;
+  activate_immediately?: boolean;
+}
+
+export interface RuleDraftRejectionRequest {
+  draft_version: number;
+  reviewer_id: string;
+  justification: string;
+}
+
+export interface ActiveRuleStatusUpdateRequest {
+  version: number;
+  status: ActiveRuleStatus;
+  justification: string;
+  actor?: string;
+}
+
+export interface ActiveDetectionRuleResponse {
+  id: string;
+  rule_code: string;
+  name: string;
+  description?: string | null;
+  severity: string;
+  mitre_attack_id?: string | null;
+  mitre_tactic?: string | null;
+  source_draft_id: string;
+  source_draft_version: number;
+  validation_run_id: string;
+  status: ActiveRuleStatus;
+  version: number;
+  approved_by: string;
+  approved_at: string;
+  activated_at: string;
+  deactivated_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  governance_classification: string;
+  author_attribution_note: string;
+}
+
+export interface ActiveDetectionRuleListResponse {
+  items: ActiveDetectionRuleResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface RuleAuditEntryResponse {
+  id: string;
+  target_type: string;
+  target_id: string;
+  action: string;
+  actor: string;
+  timestamp: string;
+  justification: string;
+  state_before: Record<string, unknown>;
+  state_after: Record<string, unknown>;
+  demo_override_flag: boolean;
+  security_warning?: string | null;
+  storage_classification: string;
+}
+
+export interface RuleAuditListResponse {
+  items: RuleAuditEntryResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+
