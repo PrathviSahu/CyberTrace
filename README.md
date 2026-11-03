@@ -1,7 +1,8 @@
 # CyberTrace — AI-Native SOC Incident Investigation Platform
 
-[![CI Backend](https://img.shields.io/badge/pytest-95%2F95%20passing-10b981?style=for-the-badge&logo=pytest)](https://github.com/PrathviSahu/CyberTrace)
-[![Frontend](https://img.shields.io/badge/Vite%20%2B%20React-TypeScript-b58a61?style=for-the-badge&logo=react)](https://github.com/PrathviSahu/CyberTrace)
+[![CI Backend](https://img.shields.io/badge/pytest-283%2F283%20passing-10b981?style=for-the-badge&logo=pytest)](https://github.com/PrathviSahu/CyberTrace)
+[![Frontend Tests](https://img.shields.io/badge/vitest-48%2F48%20passing-10b981?style=for-the-badge&logo=vitest)](https://github.com/PrathviSahu/CyberTrace)
+[![TypeScript](https://img.shields.io/badge/TypeScript-0%20errors-3178c6?style=for-the-badge&logo=typescript)](https://github.com/PrathviSahu/CyberTrace)
 [![AI Engine](https://img.shields.io/badge/BharatCode-Qwen%203.8%2027B-6366f1?style=for-the-badge)](https://bharatcode.ai)
 
 > **BharatCode Hackathon 2026 Official Submission**  
@@ -75,6 +76,10 @@ To maintain operational integrity and transparency, CyberTrace explicitly distin
 | **ThreatLab Benchmark Harness** | **Live** | In-memory scenario replay, $TP/FP/FN/TN$ confusion matrix computation. |
 | **Asset & Identity Intelligence** | **Live** | Live inventory derived from telemetry (`/api/v1/assets`, `/api/v1/assets/{type}/{value}`); canonical case grouping; observed IP addresses; user identities. |
 | **Threat Hunting Query Studio** | **Live (Phase 6.2)** | Parameterized multi-predicate AST query engine (`POST /api/v1/hunting/query`), allowlisted field/operator typing, server-side sorting, pagination, and truthful provenance auditing. |
+| **Saved Hunts & AST Query Catalog** | **Live (Phase 6.4)** | Structured AST query catalog, parameter validation, repeat execution, and rule promotion (`/api/v1/saved-hunts`). |
+| **Detection Rule Drafts & Simulation** | **Live (Phase 6.4)** | Draft authoring, AST verification, pre-flight dry-run simulation against telemetry and benchmarks (`/api/v1/rules/drafts`). |
+| **Four-Eyes Governance & Audit Ledger** | **Live (Phase 6.4)** | Revision-bound independent peer review, self-approval prevention (HTTP 403), atomic `CUST-xxx` allocation, and append-only SHA-256 audit ledger (`/api/v1/rules/audit-ledger`). |
+| **Dynamic Detection Engine & Correlated Graphs** | **Live (Phase 6.4)** | In-memory dynamic rule compilation, runtime telemetry matching, instant Dagre attack graph correlation, and lifecycle state management. |
 | **Multi-Model Routing & Comparison** | **Blueprint (Phase 5.2)** | Single-model live execution (Qwen 27B); multi-model routing specified in Phase 5.2. |
 | **Case Management & Playbooks** | **Blueprint (Phase 7)** | Analyst approval gating specified in Phase 7 roadmap. |
 
@@ -262,8 +267,11 @@ CyberTrace/
 │   │   ├── rules/                     # Deterministic detection engine (DET-001 to DET-004) & in-memory AST evaluator
 │   │   ├── schemas/                   # Pydantic schemas (CES, Detection, Incident, Hunting AST, Saved Hunts, Rule Drafts)
 │   │   └── threatlab/                 # ThreatLab benchmark engine & scenario catalog
-│   └── tests/                         # 186 automated pytest integration & unit tests
+│   └── tests/                         # 283 automated pytest integration & unit tests
 ├── docs/
+│   ├── JUDGE_QA_PLAYBOOK.md           # Calibrated technical Q&A reference for evaluation jury
+│   ├── SHOWCASE_DAY_PACKET.md         # Complete operational guide & calibrated 3:30 script
+│   ├── SHOWCASE_REHEARSAL_REPORT.md   # Measured dry-run timing & verification report
 │   ├── PROVENANCE_INTEGRITY_AUDIT.md  # Grounded telemetry vs. checksum integrity audit
 │   ├── TEAMMATE_QUICKSTART.md         # Step-by-step local developer onboarding guide
 │   └── platform/                      # Platform Architecture & Specification Blueprint
