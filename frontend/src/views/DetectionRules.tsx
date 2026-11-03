@@ -297,7 +297,7 @@ severity: critical`,
   const handleGovernanceSuccess = () => {
     setBannerMessage(
       governanceMode === "approve"
-        ? "Four-eyes governance approval complete! Production custom rule code allocated and active in pipeline."
+        ? "Four-eyes governance approval complete! Custom rule code allocated and active in detection engine."
         : "Rule draft rejected and returned to editable DRAFT status for author rework."
     );
     fetchDrafts();
@@ -452,7 +452,7 @@ severity: critical`,
             </div>
 
             <div className="text-[11px] text-[#737D87]">
-              Sequential production allocation: <span className="font-mono text-[#B58A61]">CUST-xxx</span>
+              Sequential rule code allocation: <span className="font-mono text-[#B58A61]">CUST-xxx</span>
             </div>
           </div>
 
@@ -759,7 +759,7 @@ severity: critical`,
                             <button
                               type="button"
                               onClick={() => handleOpenGovernance(draft, "approve")}
-                              title="Submit for four-eyes review and production activation"
+                              title="Submit for four-eyes review and rule activation"
                               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#76A58B]/20 hover:bg-[#76A58B]/30 text-[#76A58B] border border-[#76A58B]/40 text-xs font-semibold transition-colors cursor-pointer"
                             >
                               <ShieldCheck className="w-3.5 h-3.5" />

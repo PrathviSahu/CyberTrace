@@ -241,3 +241,4 @@ export const UpdateRuleStatusModal: React.FC<UpdateRuleStatusModalProps> = ({
     </div>
   );
 };
+

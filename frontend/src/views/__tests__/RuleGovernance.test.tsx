@@ -172,7 +172,7 @@ describe("DetectionRules View - Governance & Active Rules", () => {
     expect(screen.getByText(/cannot approve their own rule/i)).toBeDefined();
 
     // Verify approve button is disabled
-    const approveBtn = screen.getByRole("button", { name: /Approve & Deploy Rule/i });
+    const approveBtn = screen.getByRole("button", { name: /Approve & Activate Rule/i });
     expect((approveBtn as HTMLButtonElement).disabled).toBeTruthy();
 
     // Switch back to different reviewer ('lead_bob') and provide valid justification (>= 10 chars)

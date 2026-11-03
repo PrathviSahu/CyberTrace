@@ -195,7 +195,7 @@ export const ApproveRejectDraftModal: React.FC<ApproveRejectDraftModalProps> = (
               onChange={(e) => setJustification(e.target.value)}
               placeholder={
                 mode === "approve"
-                  ? "Detail validation review findings, benign baseline check, and production readiness justification..."
+                  ? "Detail validation review findings, benign baseline check, and rule readiness justification..."
                   : "Detail reasons for rejection, identified false alarm risks, or required query refinements..."
               }
               className="w-full px-3 py-2 rounded-lg bg-[#111315] border border-[#30363C] text-xs text-[#E9ECEF] placeholder-[#737D87] focus:outline-none focus:border-[#B58A61] resize-none"
@@ -212,9 +212,9 @@ export const ApproveRejectDraftModal: React.FC<ApproveRejectDraftModalProps> = (
                 className="rounded border-[#30363C] text-[#B58A61] focus:ring-0 focus:ring-offset-0 cursor-pointer"
               />
               <label htmlFor="activateImmediately" className="text-xs text-[#E9ECEF] cursor-pointer">
-                <strong>Activate immediately in production pipeline</strong>
+                <strong>Activate immediately in CyberTrace detection engine</strong>
                 <span className="block text-[11px] text-[#737D87]">
-                  Allocates sequential production rule code (e.g. CUST-001) and begins real-time evaluation.
+                  Allocates sequential rule code (e.g. CUST-001) and begins real-time evaluation in pipeline.
                 </span>
               </label>
             </div>
@@ -247,7 +247,7 @@ export const ApproveRejectDraftModal: React.FC<ApproveRejectDraftModalProps> = (
               ) : (
                 <>
                   <Check className="w-3.5 h-3.5" />
-                  <span>{mode === "approve" ? "Approve & Deploy Rule" : "Reject Rule Draft"}</span>
+                  <span>{mode === "approve" ? "Approve & Activate Rule" : "Reject Rule Draft"}</span>
                 </>
               )}
             </button>
@@ -257,3 +257,4 @@ export const ApproveRejectDraftModal: React.FC<ApproveRejectDraftModalProps> = (
     </div>
   );
 };
+

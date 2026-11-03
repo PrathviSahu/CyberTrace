@@ -181,7 +181,7 @@ export const RuleValidationModal: React.FC<RuleValidationModalProps> = ({
               <div>
                 <strong className="block font-semibold">Benign Baseline False Alarm Warning (SCN-004):</strong>
                 <span>
-                  This rule triggered matches on benign administrative baseline telemetry. It is likely to generate production noise. Review and constrain filter conditions before four-eyes approval.
+                  This rule triggered matches on benign administrative baseline telemetry. It is likely to generate alert noise in pipeline. Review and constrain filter conditions before four-eyes approval.
                 </span>
               </div>
             </div>
@@ -393,3 +393,4 @@ export const RuleValidationModal: React.FC<RuleValidationModalProps> = ({
     </div>
   );
 };
+
