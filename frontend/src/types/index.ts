@@ -339,3 +339,83 @@ export interface ScenarioReplayResult {
   status: string;
   evaluation_notes: string[];
 }
+
+// ---------------------------------------------------------------------------
+// Phase 6.3A / 6.4 — Saved Threat Hunts & Query Persistence Contracts
+// ---------------------------------------------------------------------------
+
+export interface SavedHuntQueryDefinition {
+  time_range?: TimeRangeFilter | null;
+  filter_group?: FilterGroup | null;
+  sort_by?: FilterField;
+  sort_order?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+}
+
+export interface SavedHuntCreate {
+  name: string;
+  description?: string | null;
+  tags?: string[];
+  query_definition: SavedHuntQueryDefinition;
+  created_by?: string;
+}
+
+export interface SavedHuntUpdate {
+  version: number;
+  name?: string;
+  description?: string | null;
+  tags?: string[];
+  query_definition?: SavedHuntQueryDefinition;
+  updated_by?: string;
+}
+
+export interface SavedHuntResponse {
+  id: string;
+  name: string;
+  description?: string | null;
+  tags: string[];
+  query_definition: SavedHuntQueryDefinition;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  version: number;
+  last_run_at?: string | null;
+  run_count: number;
+  is_archived: boolean;
+  author_attribution_note: string;
+}
+
+export interface SavedHuntListResponse {
+  items: SavedHuntResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SavedHuntExecuteRequest {
+  limit?: number;
+  offset?: number;
+  executed_by?: string;
+}
+
+export interface SavedHuntExecuteResponse {
+  hunt_id: string;
+  hunt_name: string;
+  executed_version: number;
+  executed_at: string;
+  run_count: number;
+  items: HuntedEventItem[];
+  total: number;
+  limit: number;
+  offset: number;
+  query_duration_ms: number;
+  applied_filter_count: number;
+  provenance: DataProvenance | string;
+}
+
+export interface SavedHuntDuplicateRequest {
+  name?: string;
+  created_by?: string;
+}
+

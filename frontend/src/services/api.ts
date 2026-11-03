@@ -15,6 +15,13 @@ import {
   ScenarioReplayResult,
   ThreatHuntQueryRequest,
   ThreatHuntQueryResponse,
+  SavedHuntCreate,
+  SavedHuntUpdate,
+  SavedHuntResponse,
+  SavedHuntListResponse,
+  SavedHuntExecuteRequest,
+  SavedHuntExecuteResponse,
+  SavedHuntDuplicateRequest,
 } from "../types";
 
 const API_BASE = "/api/v1";
@@ -481,6 +488,131 @@ export const api = {
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({ detail: res.statusText }));
       throw new Error(errJson.detail || `Server returned HTTP ${res.status}`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * List saved threat hunts with optional search, tag, and pagination filters
+   */
+  async listSavedHunts(params?: {
+    query?: string;
+    tag?: string;
+    include_archived?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<SavedHuntListResponse> {
+    const sp = new URLSearchParams();
+    if (params?.query) sp.set("query", params.query);
+    if (params?.tag) sp.set("tag", params.tag);
+    if (params?.include_archived) sp.set("include_archived", "true");
+    if (params?.limit !== undefined) sp.set("limit", String(params.limit));
+    if (params?.offset !== undefined) sp.set("offset", String(params.offset));
+
+    const qs = sp.toString() ? `?${sp.toString()}` : "";
+    const res = await fetch(`${API_BASE}/hunting/saved${qs}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to list saved hunts (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Get single saved hunt by ID
+   */
+  async getSavedHunt(huntId: string): Promise<SavedHuntResponse> {
+    const res = await fetch(`${API_BASE}/hunting/saved/${encodeURIComponent(huntId)}`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to fetch saved hunt ${huntId}`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Create a new saved threat hunt
+   */
+  async createSavedHunt(data: SavedHuntCreate): Promise<SavedHuntResponse> {
+    const res = await fetch(`${API_BASE}/hunting/saved`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to create saved hunt (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Update a saved threat hunt (enforces version concurrency)
+   */
+  async updateSavedHunt(huntId: string, data: SavedHuntUpdate): Promise<SavedHuntResponse> {
+    const res = await fetch(`${API_BASE}/hunting/saved/${encodeURIComponent(huntId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to update saved hunt (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Soft-delete / archive a saved threat hunt
+   */
+  async archiveSavedHunt(huntId: string): Promise<SavedHuntResponse> {
+    const res = await fetch(`${API_BASE}/hunting/saved/${encodeURIComponent(huntId)}`, {
+      method: "DELETE",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to archive saved hunt (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Execute a saved threat hunt with execution metrics tracking
+   */
+  async executeSavedHunt(huntId: string, request?: SavedHuntExecuteRequest): Promise<SavedHuntExecuteResponse> {
+    const res = await fetch(`${API_BASE}/hunting/saved/${encodeURIComponent(huntId)}/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request || {}),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to execute saved hunt (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Duplicate a saved threat hunt
+   */
+  async duplicateSavedHunt(huntId: string, request?: SavedHuntDuplicateRequest): Promise<SavedHuntResponse> {
+    const res = await fetch(`${API_BASE}/hunting/saved/${encodeURIComponent(huntId)}/duplicate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request || {}),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to duplicate saved hunt (HTTP ${res.status})`);
     }
     return await res.json();
   },

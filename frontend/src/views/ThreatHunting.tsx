@@ -20,6 +20,8 @@ import {
   SlidersHorizontal,
   XCircle,
   Eye,
+  Bookmark,
+  BookmarkPlus,
 } from "lucide-react";
 import {
   FilterField,
@@ -29,11 +31,16 @@ import {
   HuntedEventItem,
   ThreatHuntQueryRequest,
   ThreatHuntQueryResponse,
+  SavedHuntResponse,
+  SavedHuntExecuteResponse,
+  SavedHuntQueryDefinition,
 } from "../types";
 import { api } from "../services/api";
 import { EvidenceDrawer } from "../components/common/EvidenceDrawer";
 import { SeverityBadge } from "../components/common/SeverityBadge";
 import { DataProvenanceBadge } from "../components/common/DataProvenanceBadge";
+import { SaveHuntModal } from "../components/hunting/SaveHuntModal";
+import { SavedHuntsDrawer } from "../components/hunting/SavedHuntsDrawer";
 
 // UI condition model with unique key for React lists
 interface UICondition {
@@ -181,6 +188,26 @@ export const ThreatHunting: React.FC = () => {
   // Evidence Drawer state
   const [selectedEvent, setSelectedEvent] = useState<HuntedEventItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
+
+  // Saved Hunts UI state
+  const [saveModalOpen, setSaveModalOpen] = useState<boolean>(false);
+  const [savedHuntsDrawerOpen, setSavedHuntsDrawerOpen] = useState<boolean>(false);
+  const [activeSavedHunt, setActiveSavedHunt] = useState<SavedHuntResponse | null>(null);
+  const [executingSavedHuntBanner, setExecutingSavedHuntBanner] = useState<string | null>(null);
+  const [savedHuntsCount, setSavedHuntsCount] = useState<number>(0);
+
+  const refreshSavedHuntsCount = useCallback(async () => {
+    try {
+      const data = await api.listSavedHunts({ limit: 1 });
+      setSavedHuntsCount(data.total);
+    } catch {
+      // ignore in UI
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshSavedHuntsCount();
+  }, [refreshSavedHuntsCount]);
 
   // Convert UI conditions into typed FilterCondition AST
   const compileFilterConditions = (condList: UICondition[]): FilterCondition[] => {
@@ -375,6 +402,77 @@ export const ThreatHunting: React.FC = () => {
     executeQuery(0, sortBy, sortOrder, newLimit);
   };
 
+  // Saved Hunts handlers
+  const getQueryDefinitionForSave = (): SavedHuntQueryDefinition => {
+    const compiled = compileFilterConditions(conditions);
+    let filterGroup: FilterGroup | undefined = undefined;
+    if (compiled.length > 0) {
+      filterGroup = {
+        logic: logic,
+        conditions: compiled,
+      };
+    }
+    return {
+      time_range: computeTimeRange(),
+      filter_group: filterGroup,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+      limit: limit,
+      offset: 0,
+    };
+  };
+
+  const handleSaveSuccess = (savedHunt: SavedHuntResponse) => {
+    setActiveSavedHunt(savedHunt);
+    refreshSavedHuntsCount();
+    setExecutingSavedHuntBanner(`Saved Threat Hunt "${savedHunt.name}" (v${savedHunt.version}) persisted.`);
+  };
+
+  const handleLoadHuntIntoBuilder = (hunt: SavedHuntResponse) => {
+    const qd = hunt.query_definition;
+    if (!qd) return;
+
+    if (qd.filter_group?.logic) {
+      setLogic(qd.filter_group.logic);
+    }
+
+    if (qd.filter_group?.conditions && qd.filter_group.conditions.length > 0) {
+      const loadedConditions: UICondition[] = qd.filter_group.conditions.map((c, idx) => ({
+        id: `loaded_${hunt.id}_${idx}_${Date.now()}`,
+        field: c.field,
+        operator: c.operator,
+        value: Array.isArray(c.value) ? c.value.join(", ") : String(c.value ?? ""),
+      }));
+      setConditions(loadedConditions);
+    } else {
+      setConditions([]);
+    }
+
+    if (qd.sort_by) setSortBy(qd.sort_by);
+    if (qd.sort_order) setSortOrder(qd.sort_order);
+
+    setActiveSavedHunt(hunt);
+    setExecutingSavedHuntBanner(`Loaded Saved Hunt: "${hunt.name}" (v${hunt.version}) into Query Builder`);
+  };
+
+  const handleExecuteHuntDirectly = (execResult: SavedHuntExecuteResponse) => {
+    setQueryResult({
+      items: execResult.items,
+      total: execResult.total,
+      limit: execResult.limit,
+      offset: execResult.offset,
+      query_duration_ms: execResult.query_duration_ms,
+      applied_filter_count: execResult.applied_filter_count,
+      provenance: execResult.provenance as any,
+    });
+    setOffset(execResult.offset);
+    setLimit(execResult.limit);
+    setExecutingSavedHuntBanner(
+      `Execution Results for Saved Hunt: "${execResult.hunt_name}" (v${execResult.executed_version}) • Run #${execResult.run_count} • ${execResult.total} matches in ${execResult.query_duration_ms}ms`
+    );
+    refreshSavedHuntsCount();
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-[#111315] text-[#E9ECEF]">
       {/* Header & Controls */}
@@ -395,6 +493,32 @@ export const ThreatHunting: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <DataProvenanceBadge provenance={queryResult?.provenance || "unknown"} size="sm" />
+
+          <button
+            type="button"
+            onClick={() => setSavedHuntsDrawerOpen(true)}
+            title="Browse saved threat hunts library"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1D2125] border border-[#30363C] hover:border-[#B58A61]/40 text-[#A0A7AE] hover:text-[#E9ECEF] transition-colors cursor-pointer text-xs font-medium"
+          >
+            <Bookmark className="w-3.5 h-3.5 text-[#B58A61]" />
+            <span>Saved Hunts</span>
+            {savedHuntsCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-[#24282C] text-[10px] font-mono text-[#B58A61] border border-[#B58A61]/30">
+                {savedHuntsCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSaveModalOpen(true)}
+            title="Save current query AST"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#24282C] border border-[#B58A61]/30 hover:border-[#B58A61] text-[#B58A61] hover:text-[#C69A70] transition-colors cursor-pointer text-xs font-semibold"
+          >
+            <BookmarkPlus className="w-3.5 h-3.5" />
+            <span>Save Hunt</span>
+          </button>
+
           <button
             onClick={() => executeQuery(offset)}
             title="Re-run active query"
@@ -407,8 +531,48 @@ export const ThreatHunting: React.FC = () => {
         </div>
       </div>
 
+      {/* Active Saved Hunt Banner */}
+      {executingSavedHuntBanner && (
+        <div className="p-3 rounded-lg bg-[#B58A61]/10 border border-[#B58A61]/30 flex items-center justify-between text-xs text-[#E9ECEF] animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <Bookmark className="w-4 h-4 text-[#B58A61] shrink-0" />
+            <span>{executingSavedHuntBanner}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setExecutingSavedHuntBanner(null);
+              setActiveSavedHunt(null);
+            }}
+            className="text-[11px] text-[#A0A7AE] hover:text-[#E9ECEF] underline cursor-pointer shrink-0 ml-3"
+          >
+            Clear Context
+          </button>
+        </div>
+      )}
+
       {/* Query Builder Panel */}
       <div className="rounded-lg bg-[#1D2125] border border-[#30363C] p-4 space-y-4 shadow-card">
+        {/* Active Hunt Context Indicator */}
+        {activeSavedHunt && (
+          <div className="flex items-center justify-between p-2 rounded bg-[#24282C] border border-[#B58A61]/30 text-xs text-[#E9ECEF]">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-[#A0A7AE]">Active Saved Hunt:</span>
+              <span className="font-semibold text-[#B58A61]">{activeSavedHunt.name}</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#1D2125] text-[#B58A61] border border-[#B58A61]/30">
+                v{activeSavedHunt.version}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveSavedHunt(null)}
+              className="text-[11px] text-[#737D87] hover:text-[#E06C68] transition-colors cursor-pointer"
+            >
+              Unlink
+            </button>
+          </div>
+        )}
+
         {/* Logic Toggle & Top Toolbar */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-[#30363C]">
           <div className="flex items-center gap-2.5">
@@ -618,19 +782,30 @@ export const ThreatHunting: React.FC = () => {
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => executeQuery(0)}
-            disabled={loading}
-            className="flex items-center justify-center gap-2 px-5 py-2 rounded-md bg-[#B58A61] hover:bg-[#C69A70] text-[#111315] text-xs font-semibold transition-colors cursor-pointer shadow-sm disabled:opacity-50"
-          >
-            {loading ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <Play className="w-4 h-4 fill-current" />
-            )}
-            <span>{loading ? "Executing Query..." : "Execute Hunt"}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSaveModalOpen(true)}
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-md bg-[#24282C] border border-[#B58A61]/30 hover:border-[#B58A61] text-[#B58A61] hover:text-[#C69A70] text-xs font-semibold transition-colors cursor-pointer shadow-sm"
+            >
+              <BookmarkPlus className="w-3.5 h-3.5" />
+              <span>Save as Hunt</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => executeQuery(0)}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 px-5 py-2 rounded-md bg-[#B58A61] hover:bg-[#C69A70] text-[#111315] text-xs font-semibold transition-colors cursor-pointer shadow-sm disabled:opacity-50"
+            >
+              {loading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 fill-current" />
+              )}
+              <span>{loading ? "Executing Query..." : "Execute Hunt"}</span>
+            </button>
+          </div>
         </div>
 
         {/* Presets Row */}
@@ -983,6 +1158,23 @@ export const ThreatHunting: React.FC = () => {
         event={selectedEvent}
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
+      />
+
+      {/* Save Threat Hunt Modal */}
+      <SaveHuntModal
+        isOpen={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        onSaveSuccess={handleSaveSuccess}
+        queryDefinition={getQueryDefinitionForSave()}
+        activeConditionCount={conditions.filter((c) => c.value.trim().length > 0).length}
+      />
+
+      {/* Saved Threat Hunts Library Drawer */}
+      <SavedHuntsDrawer
+        isOpen={savedHuntsDrawerOpen}
+        onClose={() => setSavedHuntsDrawerOpen(false)}
+        onLoadHuntIntoBuilder={handleLoadHuntIntoBuilder}
+        onExecuteHuntDirectly={handleExecuteHuntDirectly}
       />
     </div>
   );
