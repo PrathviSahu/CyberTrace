@@ -90,21 +90,25 @@ def classify_event_provenance(
     raw_payload: Optional[Dict[str, Any]],
     source_type: Optional[str] = None,
     event_id: Optional[str] = None,
+    trusted_context: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Classify the provenance of a security event using explicit, trustworthy metadata.
 
     Provenance Principles:
-    1. A cryptographic SHA-256 hash (source_file_hash) establishes integrity/checksum
-       of the ingested file content only; it does NOT establish authenticity, authorization,
-       or that the telemetry originated from a genuine organization.
+    1. A cryptographic SHA-256 hash establishes integrity/checksum of ingested content only;
+       it does NOT establish authenticity, authorization, or that telemetry originated from
+       a genuine organization.
     2. Synthetic / benchmark indicators take strict precedence. If any synthetic, benchmark,
-       or simulation flag is present, the event is classified as 'synthetic_benchmark',
-       and any conflicting claims of observed telemetry are rejected.
-    3. An event is classified as 'observed_telemetry' ONLY if it possesses explicit, verified
-       source attribution from an identified, authorized telemetry source (e.g. collector_id,
-       sensor_id, authorized source_attribution, or telemetry_source).
-    4. If provenance cannot be reliably established from available metadata, it is labeled
+       or simulation flag is present, the event is classified as 'synthetic_benchmark'.
+    3. Untrusted event payload metadata (raw_payload) must NEVER be trusted for observed telemetry.
+       Caller-supplied fields such as 'source_attribution', 'collector_id', 'sensor_id',
+       'telemetry_source', 'authorized', or 'verified_source' inside raw_payload can be spoofed
+       by arbitrary uploaders and must resolve to 'unknown'.
+    4. An event is classified as 'observed_telemetry' ONLY when a trusted backend ingestion
+       context (trusted_context) independently verifies the source (e.g., authenticated registered
+       collector, validated signed attribution) independent of the uploaded payload.
+    5. If provenance cannot be reliably established from available metadata, it is labeled
        'unknown' rather than making unsupported authenticity claims.
     """
     raw = raw_payload or {}
@@ -135,36 +139,22 @@ def classify_event_provenance(
     if is_synthetic:
         return "synthetic_benchmark"
 
-    # Rule 2: Explicit verified source attribution for observed telemetry
-    # Telemetry is only considered 'observed_telemetry' if imported from an identified,
-    # authorized telemetry source, verified by explicit source attribution metadata.
-    source_attr = (
-        effective.get("source_attribution")
-        or effective.get("telemetry_source")
-        or effective.get("source_authority")
-        or effective.get("collector_id")
-        or effective.get("sensor_id")
-    )
-
-    if source_attr:
-        # Check if source_attr itself indicates synthetic or test data
-        if isinstance(source_attr, str):
-            attr_lower = source_attr.lower()
-            if any(marker in attr_lower for marker in ("synthetic", "benchmark", "simulat", "test_mock")):
+    # Rule 2: Explicit verified server-side source attribution for observed telemetry.
+    # Telemetry is ONLY considered 'observed_telemetry' when independently authenticated
+    # by a trusted server-side ingestion context (e.g. authenticated collector, registered sensor).
+    # Client-supplied fields in raw_payload (source_attribution, collector_id, sensor_id,
+    # authorized, verified_source) can be spoofed by arbitrary uploaders and are NEVER trusted.
+    if trusted_context and isinstance(trusted_context, dict):
+        if (
+            trusted_context.get("authenticated") is True
+            or trusted_context.get("verified_source") is True
+            or trusted_context.get("registered_collector") is True
+        ):
+            if trusted_context.get("synthetic") or trusted_context.get("benchmark"):
                 return "synthetic_benchmark"
-            if attr_lower.strip():
-                return "observed_telemetry"
-        elif isinstance(source_attr, dict):
-            if source_attr.get("synthetic") or source_attr.get("benchmark"):
-                return "synthetic_benchmark"
-            if source_attr.get("source_id") or source_attr.get("collector") or source_attr.get("authorized"):
-                return "observed_telemetry"
+            return "observed_telemetry"
 
-    # Rule 3: Explicit provenance claim in raw_payload requires verified source flag
-    if raw_prov == "observed_telemetry" and (effective.get("verified_source") is True or effective.get("authorized") is True):
-        return "observed_telemetry"
-
-    # Rule 4: Default fallback: provenance cannot be verified from available metadata
+    # Rule 3: Default fallback: generic uploads and unverified sources resolve to unknown
     return "unknown"
 
 

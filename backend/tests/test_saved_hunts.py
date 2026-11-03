@@ -653,7 +653,7 @@ async def test_execute_saved_hunt_and_update_metrics(db_session: AsyncSession):
             assert len(exec_data["items"]) == 1
             assert exec_data["items"][0]["id"] == "evt_hunt_match"
             assert exec_data["items"][0]["username"] == "compromised_svc"
-            assert exec_data["provenance"] == "observed_telemetry"
+            assert exec_data["provenance"] == "unknown"
 
             # 4. Verify persisted metrics updated on hunt
             hunt_post = (await client.get(f"/api/v1/hunting/saved/{hunt_id}")).json()
