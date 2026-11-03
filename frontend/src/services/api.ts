@@ -34,6 +34,7 @@ import {
   ActiveDetectionRuleListResponse,
   ActiveRuleStatusUpdateRequest,
   RuleAuditListResponse,
+  DataProvenance,
 } from "../types";
 
 const API_BASE = "/api/v1";
@@ -47,7 +48,7 @@ export interface LogUploadResult {
   detections_count: number;
   incidents_count: number;
   status: string;
-  provenance: "synthetic_benchmark";
+  provenance: DataProvenance;
 }
 
 /**
@@ -106,6 +107,34 @@ export const api = {
     const uniqueRuleIds = new Set(Array.isArray(detections) ? detections.map((d: any) => d.rule_id) : []).size;
     const coverage = uniqueRuleIds > 0 ? Math.min(100, Math.round((uniqueRuleIds / 4) * 100)) : null;
 
+    // Derive aggregate dataset provenance truthfully from actual event and incident items
+    const allProvenances = new Set<string>();
+    if (Array.isArray(events) && events.length > 0) {
+      events.forEach((e: any) => {
+        if (e.provenance) allProvenances.add(e.provenance);
+      });
+    }
+    if (Array.isArray(incidents) && incidents.length > 0) {
+      incidents.forEach((i: any) => {
+        if (i.provenance) allProvenances.add(i.provenance);
+      });
+    }
+
+    let datasetProvenance: DataProvenance = "unknown";
+    if (allProvenances.size === 1) {
+      const single = Array.from(allProvenances)[0];
+      if (
+        single === "observed_telemetry" ||
+        single === "synthetic_benchmark" ||
+        single === "unknown" ||
+        single === "mixed"
+      ) {
+        datasetProvenance = single as DataProvenance;
+      }
+    } else if (allProvenances.size > 1) {
+      datasetProvenance = "mixed";
+    }
+
     return {
       openIncidents: openCount,
       criticalAlerts: criticalCount || detCritical,
@@ -116,7 +145,7 @@ export const api = {
       meanTimeToTriageMin: null, // Honest: not calculated without closed incidents dataset
       aiInvestigationsCount: incidents.length > 0 ? 1 : 0,
       providerStatus: "healthy",
-      provenance: "synthetic_benchmark",
+      provenance: datasetProvenance,
     };
   },
 
@@ -132,7 +161,7 @@ export const api = {
     if (Array.isArray(data)) {
       return data.map((inc: any) => ({
         ...inc,
-        provenance: (inc.provenance || "synthetic_benchmark") as any,
+        provenance: (inc.provenance || "unknown") as DataProvenance,
         detections_count: inc.detections_count ?? (inc.entities?.length || 2),
         events_count: inc.events_count ?? 9,
       }));
@@ -170,7 +199,7 @@ export const api = {
     return {
       incident: {
         ...data.incident,
-        provenance: data.incident?.provenance || "synthetic_benchmark",
+        provenance: (data.incident?.provenance || "unknown") as DataProvenance,
         entities: data.entities || [],
       },
       detections: data.detections || [],
@@ -217,7 +246,7 @@ export const api = {
     const data = await res.json();
     return {
       ...data,
-      provenance: "synthetic_benchmark",
+      provenance: (data.provenance || "unknown") as DataProvenance,
     };
   },
 

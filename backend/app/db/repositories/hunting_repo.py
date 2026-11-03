@@ -108,15 +108,17 @@ def classify_event_provenance(
        'unknown' rather than making unsupported authenticity claims.
     """
     raw = raw_payload or {}
+    nested = raw.get("raw_payload") if isinstance(raw.get("raw_payload"), dict) else {}
+    effective = {**nested, **raw}
     eid = str(event_id or "").strip().lower()
     src_type = str(source_type or "").strip().lower()
-    raw_prov = str(raw.get("provenance", "")).strip().lower()
+    raw_prov = str(effective.get("provenance", "")).strip().lower()
 
     # Rule 1: Check for explicit synthetic/benchmark markers (High Precedence)
-    raw_synthetic = raw.get("synthetic")
-    raw_is_synthetic = raw.get("is_synthetic")
-    raw_benchmark = raw.get("benchmark")
-    raw_simulation = raw.get("simulation")
+    raw_synthetic = effective.get("synthetic")
+    raw_is_synthetic = effective.get("is_synthetic")
+    raw_benchmark = effective.get("benchmark")
+    raw_simulation = effective.get("simulation")
 
     is_synthetic = (
         raw_synthetic is True
@@ -137,11 +139,11 @@ def classify_event_provenance(
     # Telemetry is only considered 'observed_telemetry' if imported from an identified,
     # authorized telemetry source, verified by explicit source attribution metadata.
     source_attr = (
-        raw.get("source_attribution")
-        or raw.get("telemetry_source")
-        or raw.get("source_authority")
-        or raw.get("collector_id")
-        or raw.get("sensor_id")
+        effective.get("source_attribution")
+        or effective.get("telemetry_source")
+        or effective.get("source_authority")
+        or effective.get("collector_id")
+        or effective.get("sensor_id")
     )
 
     if source_attr:
@@ -159,7 +161,7 @@ def classify_event_provenance(
                 return "observed_telemetry"
 
     # Rule 3: Explicit provenance claim in raw_payload requires verified source flag
-    if raw_prov == "observed_telemetry" and (raw.get("verified_source") is True or raw.get("authorized") is True):
+    if raw_prov == "observed_telemetry" and (effective.get("verified_source") is True or effective.get("authorized") is True):
         return "observed_telemetry"
 
     # Rule 4: Default fallback: provenance cannot be verified from available metadata

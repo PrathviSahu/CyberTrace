@@ -163,12 +163,63 @@ class IncidentRepository:
         ev_stmt = select(SecurityEventModel).where(SecurityEventModel.id.in_(list(all_event_ids))).order_by(SecurityEventModel.timestamp)
         events = list((await self.session.execute(ev_stmt)).scalars().all())
 
+        # Compute evidence provenance from actual event metadata
+        from app.db.repositories.hunting_repo import classify_event_provenance
+        prov_set = {
+            classify_event_provenance(e.raw_payload, source_type=e.source_type, event_id=e.id)
+            for e in events
+        }
+        if not prov_set:
+            evidence_provenance = "unknown"
+        elif len(prov_set) == 1:
+            evidence_provenance = next(iter(prov_set))
+        else:
+            evidence_provenance = "mixed"
+
         return {
             "incident": incident,
+            "provenance": evidence_provenance,
             "detections": detections,
             "events": events,
             "entities": incident.entities,
         }
+
+    async def get_incident_provenances(self, incident_ids: List[str]) -> Dict[str, str]:
+        """
+        Determine aggregate evidence provenance for a list of incidents.
+        Inspects raw payloads of all supporting security events.
+        """
+        if not incident_ids:
+            return {}
+        from app.db.repositories.hunting_repo import classify_event_provenance
+
+        stmt = (
+            select(
+                IncidentDetectionModel.incident_id,
+                SecurityEventModel.raw_payload,
+                SecurityEventModel.source_type,
+                SecurityEventModel.id,
+            )
+            .join(DetectionModel, IncidentDetectionModel.detection_id == DetectionModel.id)
+            .join(DetectionEventModel, DetectionModel.id == DetectionEventModel.detection_id)
+            .join(SecurityEventModel, DetectionEventModel.event_id == SecurityEventModel.id)
+            .where(IncidentDetectionModel.incident_id.in_(incident_ids))
+        )
+        rows = (await self.session.execute(stmt)).all()
+        inc_events: Dict[str, set] = {iid: set() for iid in incident_ids}
+        for inc_id, raw, src, eid in rows:
+            prov = classify_event_provenance(raw, source_type=src, event_id=eid)
+            inc_events[inc_id].add(prov)
+
+        result: Dict[str, str] = {}
+        for inc_id, prov_set in inc_events.items():
+            if not prov_set:
+                result[inc_id] = "unknown"
+            elif len(prov_set) == 1:
+                result[inc_id] = next(iter(prov_set))
+            else:
+                result[inc_id] = "mixed"
+        return result
 
     async def update_status(self, incident_id: str, new_status: str) -> Optional[IncidentModel]:
         """Update triage status for an incident (open, in_progress, contained, resolved, closed)."""
