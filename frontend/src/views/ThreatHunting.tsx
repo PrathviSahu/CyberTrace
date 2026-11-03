@@ -41,6 +41,8 @@ import { SeverityBadge } from "../components/common/SeverityBadge";
 import { DataProvenanceBadge } from "../components/common/DataProvenanceBadge";
 import { SaveHuntModal } from "../components/hunting/SaveHuntModal";
 import { SavedHuntsDrawer } from "../components/hunting/SavedHuntsDrawer";
+import { CreateRuleDraftModal } from "../components/rules/CreateRuleDraftModal";
+import { DetectionRuleDraftResponse } from "../types";
 
 // UI condition model with unique key for React lists
 interface UICondition {
@@ -195,6 +197,11 @@ export const ThreatHunting: React.FC = () => {
   const [activeSavedHunt, setActiveSavedHunt] = useState<SavedHuntResponse | null>(null);
   const [executingSavedHuntBanner, setExecutingSavedHuntBanner] = useState<string | null>(null);
   const [savedHuntsCount, setSavedHuntsCount] = useState<number>(0);
+
+  // Rule Draft Promotion state
+  const [promoteModalHunt, setPromoteModalHunt] = useState<SavedHuntResponse | null>(null);
+  const [createRuleModalOpen, setCreateRuleModalOpen] = useState<boolean>(false);
+  const [ruleDraftSuccessBanner, setRuleDraftSuccessBanner] = useState<string | null>(null);
 
   const refreshSavedHuntsCount = useCallback(async () => {
     try {
@@ -473,6 +480,17 @@ export const ThreatHunting: React.FC = () => {
     refreshSavedHuntsCount();
   };
 
+  const handlePromoteToRule = (hunt: SavedHuntResponse) => {
+    setPromoteModalHunt(hunt);
+    setCreateRuleModalOpen(true);
+  };
+
+  const handleDraftCreated = (draft: DetectionRuleDraftResponse) => {
+    setRuleDraftSuccessBanner(
+      `Detection Rule Draft "${draft.name}" (ID: ${draft.id}, Severity: ${draft.severity}) created successfully! Access Detection Rules to run pre-flight simulation and review governance.`
+    );
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-[#111315] text-[#E9ECEF]">
       {/* Header & Controls */}
@@ -530,6 +548,23 @@ export const ThreatHunting: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Rule Draft Promotion Success Banner */}
+      {ruleDraftSuccessBanner && (
+        <div className="p-3 rounded-lg bg-[#76A58B]/15 border border-[#76A58B]/30 flex items-center justify-between text-xs text-[#E9ECEF] animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <Bookmark className="w-4 h-4 text-[#76A58B] shrink-0" />
+            <span>{ruleDraftSuccessBanner}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRuleDraftSuccessBanner(null)}
+            className="text-[11px] text-[#A0A7AE] hover:text-[#E9ECEF] underline cursor-pointer shrink-0 ml-3"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Active Saved Hunt Banner */}
       {executingSavedHuntBanner && (
@@ -1175,6 +1210,27 @@ export const ThreatHunting: React.FC = () => {
         onClose={() => setSavedHuntsDrawerOpen(false)}
         onLoadHuntIntoBuilder={handleLoadHuntIntoBuilder}
         onExecuteHuntDirectly={handleExecuteHuntDirectly}
+        onPromoteToRule={handlePromoteToRule}
+      />
+
+      {/* Promote to Rule Draft Modal */}
+      <CreateRuleDraftModal
+        isOpen={createRuleModalOpen}
+        onClose={() => {
+          setCreateRuleModalOpen(false);
+          setPromoteModalHunt(null);
+        }}
+        onDraftCreated={handleDraftCreated}
+        sourceHunt={
+          promoteModalHunt
+            ? {
+                id: promoteModalHunt.id,
+                name: promoteModalHunt.name,
+                version: promoteModalHunt.version,
+                queryDefinition: promoteModalHunt.query_definition,
+              }
+            : null
+        }
       />
     </div>
   );

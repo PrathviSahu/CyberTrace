@@ -22,6 +22,18 @@ import {
   SavedHuntExecuteRequest,
   SavedHuntExecuteResponse,
   SavedHuntDuplicateRequest,
+  DetectionRuleDraftCreate,
+  DetectionRuleDraftUpdate,
+  DetectionRuleDraftResponse,
+  DetectionRuleDraftListResponse,
+  RuleValidationRunRequest,
+  RuleValidationReportResponse,
+  RuleDraftApprovalRequest,
+  RuleDraftRejectionRequest,
+  ActiveDetectionRuleResponse,
+  ActiveDetectionRuleListResponse,
+  ActiveRuleStatusUpdateRequest,
+  RuleAuditListResponse,
 } from "../types";
 
 const API_BASE = "/api/v1";
@@ -35,7 +47,7 @@ export interface LogUploadResult {
   detections_count: number;
   incidents_count: number;
   status: string;
-  provenance: "live_telemetry";
+  provenance: "synthetic_benchmark";
 }
 
 /**
@@ -104,7 +116,7 @@ export const api = {
       meanTimeToTriageMin: null, // Honest: not calculated without closed incidents dataset
       aiInvestigationsCount: incidents.length > 0 ? 1 : 0,
       providerStatus: "healthy",
-      provenance: "live_telemetry",
+      provenance: "synthetic_benchmark",
     };
   },
 
@@ -120,7 +132,7 @@ export const api = {
     if (Array.isArray(data)) {
       return data.map((inc: any) => ({
         ...inc,
-        provenance: "live_telemetry" as const,
+        provenance: (inc.provenance || "synthetic_benchmark") as any,
         detections_count: inc.detections_count ?? (inc.entities?.length || 2),
         events_count: inc.events_count ?? 9,
       }));
@@ -158,7 +170,7 @@ export const api = {
     return {
       incident: {
         ...data.incident,
-        provenance: "live_telemetry",
+        provenance: data.incident?.provenance || "synthetic_benchmark",
         entities: data.entities || [],
       },
       detections: data.detections || [],
@@ -205,7 +217,7 @@ export const api = {
     const data = await res.json();
     return {
       ...data,
-      provenance: "live_telemetry",
+      provenance: "synthetic_benchmark",
     };
   },
 
@@ -616,5 +628,271 @@ export const api = {
     }
     return await res.json();
   },
+
+  // ===========================================================================
+  // Section: Detection Rule Drafts & Pre-flight Validation (Phase 6.3B / 6.4)
+  // ===========================================================================
+
+  /**
+   * List detection rule drafts with optional status and severity filtering
+   */
+  async listRuleDrafts(params?: {
+    status?: string;
+    severity?: string;
+    include_archived?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<DetectionRuleDraftListResponse> {
+    const sp = new URLSearchParams();
+    if (params?.status) sp.set("status", params.status);
+    if (params?.severity) sp.set("severity", params.severity);
+    if (params?.include_archived) sp.set("include_archived", "true");
+    if (params?.limit !== undefined) sp.set("limit", String(params.limit));
+    if (params?.offset !== undefined) sp.set("offset", String(params.offset));
+
+    const qs = sp.toString() ? `?${sp.toString()}` : "";
+    const res = await fetch(`${API_BASE}/rules/drafts${qs}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to list rule drafts (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Get single detection rule draft by ID
+   */
+  async getRuleDraft(draftId: string): Promise<DetectionRuleDraftResponse> {
+    const res = await fetch(`${API_BASE}/rules/drafts/${encodeURIComponent(draftId)}`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to fetch rule draft ${draftId}`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Create a detection rule draft (from scratch or promoted from saved hunt)
+   */
+  async createRuleDraft(data: DetectionRuleDraftCreate): Promise<DetectionRuleDraftResponse> {
+    const res = await fetch(`${API_BASE}/rules/drafts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to create rule draft (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Update a detection rule draft (enforces version concurrency control)
+   */
+  async updateRuleDraft(draftId: string, data: DetectionRuleDraftUpdate): Promise<DetectionRuleDraftResponse> {
+    const res = await fetch(`${API_BASE}/rules/drafts/${encodeURIComponent(draftId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to update rule draft (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Archive / soft-delete a detection rule draft
+   */
+  async archiveRuleDraft(draftId: string): Promise<DetectionRuleDraftResponse> {
+    const res = await fetch(`${API_BASE}/rules/drafts/${encodeURIComponent(draftId)}`, {
+      method: "DELETE",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to archive rule draft (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Run pre-flight simulation against historical telemetry and ThreatLab benchmarks
+   */
+  async validateRuleDraft(
+    draftId: string,
+    request?: RuleValidationRunRequest
+  ): Promise<RuleValidationReportResponse> {
+    const res = await fetch(`${API_BASE}/rules/drafts/${encodeURIComponent(draftId)}/validate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request || {}),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Rule draft validation failed (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * List historical validation runs for a draft
+   */
+  async listRuleDraftValidations(draftId: string, params?: { limit?: number; offset?: number }): Promise<{ items: any[]; total: number }> {
+    const sp = new URLSearchParams();
+    if (params?.limit !== undefined) sp.set("limit", String(params.limit));
+    if (params?.offset !== undefined) sp.set("offset", String(params.offset));
+    const qs = sp.toString() ? `?${sp.toString()}` : "";
+    const res = await fetch(`${API_BASE}/rules/drafts/${encodeURIComponent(draftId)}/validations${qs}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to list validations (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  // ===========================================================================
+  // Section: Rule Governance, Active Rules & Audit Ledger (Phase 6.3C / 6.4)
+  // ===========================================================================
+
+  /**
+   * Approve a validated rule draft and promote to active production rule
+   */
+  async approveRuleDraft(
+    draftId: string,
+    payload: RuleDraftApprovalRequest
+  ): Promise<ActiveDetectionRuleResponse> {
+    const res = await fetch(`${API_BASE}/rules/drafts/${encodeURIComponent(draftId)}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Draft approval failed (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Reject a validated rule draft with mandatory justification rationale
+   */
+  async rejectRuleDraft(
+    draftId: string,
+    payload: RuleDraftRejectionRequest
+  ): Promise<DetectionRuleDraftResponse> {
+    const res = await fetch(`${API_BASE}/rules/drafts/${encodeURIComponent(draftId)}/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Draft rejection failed (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * List active production custom rules
+   */
+  async listActiveRules(params?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ActiveDetectionRuleListResponse> {
+    const sp = new URLSearchParams();
+    if (params?.status) sp.set("status", params.status);
+    if (params?.limit !== undefined) sp.set("limit", String(params.limit));
+    if (params?.offset !== undefined) sp.set("offset", String(params.offset));
+
+    const qs = sp.toString() ? `?${sp.toString()}` : "";
+    const res = await fetch(`${API_BASE}/rules/active${qs}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to list active rules (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Get active production rule by ID or rule code (e.g. CUST-001)
+   */
+  async getActiveRule(ruleId: string): Promise<ActiveDetectionRuleResponse> {
+    const res = await fetch(`${API_BASE}/rules/active/${encodeURIComponent(ruleId)}`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Active rule '${ruleId}' not found`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * Update active rule status (ACTIVE <-> DISABLED -> DEPRECATED)
+   */
+  async updateActiveRuleStatus(
+    ruleId: string,
+    payload: ActiveRuleStatusUpdateRequest
+  ): Promise<ActiveDetectionRuleResponse> {
+    const res = await fetch(`${API_BASE}/rules/active/${encodeURIComponent(ruleId)}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to update rule status (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
+
+  /**
+   * List entries from immutable rule lifecycle audit ledger
+   */
+  async listRuleAuditEntries(params?: {
+    target_type?: string;
+    target_id?: string;
+    actor?: string;
+    action?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<RuleAuditListResponse> {
+    const sp = new URLSearchParams();
+    if (params?.target_type) sp.set("target_type", params.target_type);
+    if (params?.target_id) sp.set("target_id", params.target_id);
+    if (params?.actor) sp.set("actor", params.actor);
+    if (params?.action) sp.set("action", params.action);
+    if (params?.limit !== undefined) sp.set("limit", String(params.limit));
+    if (params?.offset !== undefined) sp.set("offset", String(params.offset));
+
+    const qs = sp.toString() ? `?${sp.toString()}` : "";
+    const res = await fetch(`${API_BASE}/rules/audit${qs}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Failed to query audit ledger (HTTP ${res.status})`);
+    }
+    return await res.json();
+  },
 };
+
 

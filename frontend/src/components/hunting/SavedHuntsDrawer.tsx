@@ -16,6 +16,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  FileCode,
 } from "lucide-react";
 import { api } from "../../services/api";
 import {
@@ -28,6 +29,7 @@ interface SavedHuntsDrawerProps {
   onClose: () => void;
   onLoadHuntIntoBuilder: (hunt: SavedHuntResponse) => void;
   onExecuteHuntDirectly: (execResult: SavedHuntExecuteResponse) => void;
+  onPromoteToRule?: (hunt: SavedHuntResponse) => void;
 }
 
 export const SavedHuntsDrawer: React.FC<SavedHuntsDrawerProps> = ({
@@ -35,6 +37,7 @@ export const SavedHuntsDrawer: React.FC<SavedHuntsDrawerProps> = ({
   onClose,
   onLoadHuntIntoBuilder,
   onExecuteHuntDirectly,
+  onPromoteToRule,
 }) => {
   const [hunts, setHunts] = useState<SavedHuntResponse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -381,6 +384,21 @@ export const SavedHuntsDrawer: React.FC<SavedHuntsDrawerProps> = ({
                     </button>
 
                     <div className="flex items-center gap-2">
+                      {onPromoteToRule && !hunt.is_archived && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onPromoteToRule(hunt);
+                            onClose();
+                          }}
+                          title="Promote saved hunt to detection rule draft"
+                          className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#B58A61]/15 hover:bg-[#B58A61]/25 text-[11px] text-[#B58A61] border border-[#B58A61]/30 transition-colors cursor-pointer"
+                        >
+                          <FileCode className="w-3 h-3" />
+                          <span>Promote to Rule</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => handleDuplicate(hunt)}
